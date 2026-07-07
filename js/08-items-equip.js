@@ -939,7 +939,7 @@ function doEnhance(targetUid, isEq = true) {
             rate = en === safe ? 0.30 : 0.20;
         }
         if (Math.random() < rate) success = true;     // 🎲 即時擲骰：成敗純機率（每次嘗試獨立，可 save/load 重抽）
-        else destroy = true;                          // 失敗即爆裝
+        else destroy = true;                          // 失敗：預設爆裝（部分卷軸例外見下方）
     }
 
     let fn = getItemFullName(target);
@@ -950,11 +950,17 @@ function doEnhance(targetUid, isEq = true) {
         let _enTxt = '+' + capEn(target.en, d);   // 🔧 顯示 +N（夾擠至強化上限）
         logSys(`<span class="text-yellow-400 font-bold">${_enTxt} ${d.n} ${prefix}發出銀色的光芒。</span>`);
     } else if (destroy) {
-        logSys(`<span class="text-red-500 font-bold">${fn} 強烈的發出銀色的光芒就消失了。</span>`);
-        if (isEq) {
-            player.eq[slot] = null; // 碎掉身上裝備
+        // ✅ 祝福的武/防卷、以及飾品卷：失敗僅顯示「沒有發生任何事情」，不爆裝（仍已消耗卷軸）
+        let noBoom = (scroll.id === 'scroll_acc') || !!(DB.items[scroll.id] && DB.items[scroll.id].isB);
+        if (noBoom) {
+            logSys(`<span class="text-slate-300">${fn}</span><span class="text-slate-400"> 沒有發生任何事情。</span>`);
         } else {
-            player.inv = player.inv.filter(i => i.uid !== target.uid); // 碎掉背包裝備
+            logSys(`<span class="text-red-500 font-bold">${fn} 強烈的發出銀色的光芒就消失了。</span>`);
+            if (isEq) {
+                player.eq[slot] = null; // 碎掉身上裝備
+            } else {
+                player.inv = player.inv.filter(i => i.uid !== target.uid); // 碎掉背包裝備
+            }
         }
     }
     

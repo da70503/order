@@ -1190,7 +1190,12 @@ function _quickEnhanceUnit(d, startEn, goal, scrollStacks, useBless) {
         if (!st || st.cnt <= 0) break;   // 卷軸用盡：停在目前等級（不爆裝）
         st.cnt -= 1; used += 1;
         let ok = (en < safe) || (Math.random() < _enhanceRate(d, en, safe));   // 安定值前必成功；之後依機率（🎲 即時擲骰，可 save/load 重抽）
-        if (!ok) { destroyed = true; break; }   // 失敗即爆裝
+        if (!ok) {
+            // ✅ 祝福的武/防卷、以及飾品卷：失敗僅「無事發生」，不爆裝（仍消耗卷軸，可繼續嘗試）
+            if (bless || scrollId === 'scroll_acc') continue;
+            destroyed = true;
+            break;
+        }   // 一般武/防卷：失敗即爆裝
         let add = bless ? (1 + Math.floor(Math.random() * 3)) : 1;   // 🌟 祝福卷成功時隨機 +1~+3（純機率）；一般卷 +1
         en = Math.min(cap, en + add);   // 跳級不超過淬鍊上限
     }
