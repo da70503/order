@@ -47,36 +47,48 @@ function gameLoop() {
     if(n <= 0) return;
 
     if(n === 1) {           // 正常情況：每 100ms 跑一個 tick
-        // 🔧 前景即時遊玩不顯示金幣（金幣不逐殺輸出，也不在即時累積）；金幣僅於背景補跑回來時由 flushAwaySummary 彙整顯示。
-        flushAwaySummary(); // 回到即時：若先前累積了補跑所得，於此統一輸出一次
-        state.inTick = true;   // 🔧 架構#2：tick 期間的擊殺只標記，結束後統一清算
-        try { tick(); } finally { state.inTick = false; settleDeadMobs(); }
-        flushTickRender();   // 🚀 重繪合併：把本 tick 內累積的 updateUI/renderMobs 統一重繪一次
+        runCatchUpTicks(1);
         return;
     }
 
     // 需要補跑多個 tick：期間關閉逐 tick 的畫面刷新與戰鬥訊息，跑完再統一刷新一次
-    // 補跑期間 logSys 被靜音，先記錄背包與金幣，補跑後把增量「累積」起來（不立即輸出，
-    // 避免計時抖動/背景降速造成每次小補跑都洗一行訊息）。達門檻並回到即時後由 flushAwaySummary 統一輸出。
+    runCatchUpTicks(n, { batch: true });
+}
+
+// 補跑 n 個邏輯 tick（背景分頁 gameLoop / 離線讀檔共用）。回傳 { ran, died }。
+function runCatchUpTicks(n, opts) {
+    opts = opts || {};
+    if (!(n > 0) || !state.running) return { ran: 0, died: false };
+
+    if (n === 1 && !opts.batch) {
+        // 🔧 前景即時遊玩不顯示金幣（金幣不逐殺輸出，也不在即時累積）；金幣僅於背景補跑回來時由 flushAwaySummary 彙整顯示。
+        flushAwaySummary();
+        state.inTick = true;
+        try { tick(); } finally { state.inTick = false; settleDeadMobs(); }
+        flushTickRender();
+        return { ran: 1, died: !!player.dead };
+    }
+
     const _invBefore = {};
     player.inv.forEach(i => { _invBefore[i.id] = (_invBefore[i.id] || 0) + i.cnt; });
     const _goldBefore = player.gold;
 
     state.ff = true;
-    state.inTick = true;   // 🔧 架構#2：補跑期間同樣每個 tick 結束才清算死亡
+    state.inTick = true;
+    let ran = 0;
     try {
-        for(let k=0; k<n; k++) {
-            if(!state.running || player.dead) break;
+        for (let k = 0; k < n; k++) {
+            if (!state.running || player.dead) break;
             tick();
-            settleDeadMobs();   // 每個 tick 結束即清算，下一個 tick 以遞補完成的場面開始
+            settleDeadMobs();
+            ran++;
         }
     } finally {
-        state.ff = false;   // 保證即使 tick() 拋例外也會解除補跑旗標，避免畫面/出怪永久凍結
+        state.ff = false;
         state.inTick = false;
-        settleDeadMobs();   // 保底：例外中斷時也完成清算
+        settleDeadMobs();
     }
 
-    // 將這次補跑的淨增量併入累積（以前後數量差計算，含被消耗者的負值，最終只輸出淨正值）
     const _invAfter = {};
     player.inv.forEach(i => { _invAfter[i.id] = (_invAfter[i.id] || 0) + i.cnt; });
     let _ids = new Set([...Object.keys(_invBefore), ...Object.keys(_invAfter)]);
@@ -86,10 +98,10 @@ function gameLoop() {
     });
     let _goldGain = player.gold - _goldBefore;
     if (_goldGain > 0) _awayAcc.gold += _goldGain;
-    _awayAcc.ticks += n;
+    _awayAcc.ticks += ran;
 
-    // 補跑結束，統一刷新畫面（累積所得於下一個即時 tick 開頭由 flushAwaySummary 統一輸出）
-    updateUI(); renderMobs(); renderTabs();
+    if (opts.refreshUi !== false) { updateUI(); renderMobs(); renderTabs(); }
+    return { ran, died: !!player.dead };
 }
 
 // 🛡️ 絕對屏障：與世界隔絕——無法攻擊/施法/用道具、不自然恢復、不受任何傷害（持續期間 player.buffs.sk_abs_barrier>0）
