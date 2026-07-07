@@ -1443,7 +1443,7 @@ function rollPledgeDropEnhance(safe) {
     return Math.min(lvl, safe);
 }
 
-// 野外+血盟敵人擊殺掉寶：1% 機率獲得 1 件物品（抽法同潘朵拉抽獎卷；詞綴走新制——只可能獲得「祝福的」1%，屬性/遠古改由象牙塔『碧恩』取得；仍依安定值附帶強化等級）
+// 野外+血盟敵人擊殺掉寶：1% 機率獲得 1 件物品（抽法同潘朵拉抽獎卷；詞綴走新制——只可能獲得「祝福的」1%，屬性/遠古改由象牙塔『碧火』取得；仍依安定值附帶強化等級）
 function pledgeBonusDrop(mob) {
     if (Math.random() >= 0.01 * classicDropMult()) return;   // 1% 機率（🎮 經典模式：×1/10）
     let id = getWeightedGachaResult(true);   // 🔧 血盟野外＋攻城敵人：權重 1 以外的物品以 2 倍權重抽取（權重100→200）
@@ -1452,7 +1452,7 @@ function pledgeBonusDrop(mob) {
     let isEquip = ((d0.type === 'wpn' && !d0.isArrow) || d0.type === 'arm' || d0.type === 'acc');
     let item;
     if (isEquip) {
-        // 🔧 詞綴改走新制（同 gainItem/rollAffixesNew）：只可能獲得「祝福的」1%；屬性/遠古不再隨機掉落（改由象牙塔『碧恩』取得）
+        // 🔧 詞綴改走新制（同 gainItem/rollAffixesNew）：只可能獲得「祝福的」1%；屬性/遠古不再隨機掉落（改由象牙塔『碧火』取得）
         let _af = rollAffixesNew();
         let attr = _af.attr, bless = _af.bless, anc = _af.anc;
         let en = rollPledgeDropEnhance(d0.safe || 0);   // 依物品安定值決定強化等級（🏛️v3.0.83 傳統權重表分流已移除）

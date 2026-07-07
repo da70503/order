@@ -902,24 +902,6 @@ function ismaelCursedExchange(kind) {
 function kristaExchange(kind) {
     let GOLD = 1000000;
     let want = (typeof trialQtyVal === 'function') ? trialQtyVal() : 1;
-    if (kind === 'uncurse') {
-        let haveW = questCountId('scroll_weapon_b'), haveA = questCountId('scroll_armor_b');
-        let maxAff = Math.min(haveW, haveA, Math.floor((player.gold || 0) / GOLD));
-        if (maxAff < 1) {
-            if ((player.gold || 0) < GOLD) logSys(`<span class="text-red-400">金幣不足（需 ${GOLD.toLocaleString()}）。</span>`);
-            else logSys(`<span class="text-red-400">需要 1 張 祝福的 對武器施法的卷軸 與 1 張 祝福的 對盔甲施法的卷軸。</span>`);
-            return;
-        }
-        let n = Math.min(want, maxAff);
-        player.gold -= GOLD * n;
-        questConsumeId('scroll_weapon_b', n);
-        questConsumeId('scroll_armor_b', n);
-        gainItem('new_item_uncurse', n, true, true);
-        renderTabs(); updateUI(); saveGame();
-        logSys(`花費 ${(GOLD * n).toLocaleString()} 金幣 ＋ ${n} 張 祝福的 對武器施法的卷軸 ＋ ${n} 張 祝福的 對盔甲施法的卷軸，換得 ${n} 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span>。`);
-        let _eu = document.getElementById('interaction-content'); if (_eu) renderKristaExchange(_eu);
-        return;
-    }
     let cfg = {
         wpn: { scroll: 'scroll_weapon', need: 100, out: 'new_item_bless_wpn', nm: '對武器施法的卷軸', outNm: '賦予武器祝福卷軸' },
         arm: { scroll: 'scroll_armor',  need: 100, out: 'new_item_bless_arm', nm: '對盔甲施法的卷軸', outNm: '賦予盔甲祝福卷軸' },
@@ -956,51 +938,101 @@ function renderKristaExchange(el) {
             ${row('wpn','scroll_weapon',100,'對武器施法的卷軸','賦予武器祝福卷軸')}
             ${row('arm','scroll_armor',100,'對盔甲施法的卷軸','賦予盔甲祝福卷軸')}
             ${row('acc','scroll_acc',5,'對飾品施法的卷軸','賦予飾品祝福卷軸')}
-            <div class="flex items-center justify-between gap-2 bg-slate-800/60 border border-slate-600 rounded p-3">
-                <div class="text-sm text-slate-200 leading-relaxed">100 萬金幣 ＋ 1 張 <span class="text-yellow-300">祝福的 對武器施法的卷軸</span> ＋ 1 張 <span class="text-yellow-300">祝福的 對盔甲施法的卷軸</span> → 1 張 <span class="text-cyan-200 font-bold">解除詛咒的卷軸</span><br><span class="text-xs text-slate-400">持有（含倉庫）：${questCountId('scroll_weapon_b')} / ${questCountId('scroll_armor_b')} 張</span></div>
-                <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-2 px-4 font-bold shrink-0" onclick="kristaExchange('uncurse')">兌換</button>
-            </div>
         </div>`;
 }
-// ===== 碧恩：用賦予祝福卷軸為裝備隨機改變一個詞綴（屬性/遠古系/祝福，平均抽一） =====
+// ===== 碧火：祝福匠（神聖祝福 / 上古祝福）=====
+//  - 神聖祝福：把裝備變成「祝福的」（已是祝福則提示且不消耗卷軸）
+//  - 上古祝福：四種遠古系隨機抽取（抽到同樣則重抽，不會消失；一律消耗卷軸）
+function bifuBlessScrollId(slotKey) {
+    let isAcc = (slotKey === 'ring1' || slotKey === 'ring2' || slotKey === 'ring3' || slotKey === 'ring4' || slotKey === 'amulet' || slotKey === 'belt');
+    return (slotKey === 'wpn' || slotKey === 'offwpn') ? 'new_item_bless_wpn' : (isAcc ? 'new_item_bless_acc' : 'new_item_bless_arm');
+}
+function bifuBlessScrollName(scrollId) {
+    return { 'new_item_bless_wpn':'賦予武器祝福卷軸', 'new_item_bless_arm':'賦予盔甲祝福卷軸', 'new_item_bless_acc':'賦予飾品祝福卷軸' }[scrollId] || '賦予祝福卷軸';
+}
+function renderBifuBlessChoice(el, slotKey) {
+    let item = player && player.eq ? player.eq[slotKey] : null;
+    if (!item) { logSys('該欄位沒有裝備。'); renderBianBless(el); return; }
+    let name = getItemFullName(item);
+    let scrollId = bifuBlessScrollId(slotKey);
+    let scrollNm = bifuBlessScrollName(scrollId);
+    let have = invCountId(scrollId);   // 🔧 含倉庫存量（與 consumeMaterialById 一致）
+    el.innerHTML = `
+        <div class="flex flex-col gap-3 p-1">
+            <div class="text-slate-300 text-sm leading-relaxed">
+                <b class="text-amber-300">碧火</b>：要將祝福施加於這件裝備嗎？<br>
+                <span class="text-xs text-slate-400">目標：${name}</span>
+            </div>
+            <div class="bg-slate-800/40 border border-slate-700 rounded p-3 text-sm">
+                <div><b class="text-amber-300">可用卷軸</b>：${scrollNm}（持有含倉庫：${have}）</div>
+                <div class="mt-1 text-xs text-slate-400">神聖祝福：使裝備成為「祝福的」。上古祝福：隨機賦予遠古系詞綴（遠古/永恆/不朽/太初）。</div>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-2">
+                <button class="btn bg-purple-800 hover:bg-purple-700 border-purple-500 py-3 px-4 font-bold" onclick="doBifuSacredBless('${slotKey}')">神聖祝福</button>
+                <button class="btn bg-indigo-800 hover:bg-indigo-700 border-indigo-500 py-3 px-4 font-bold" onclick="doBifuAncientBless('${slotKey}')">上古祝福</button>
+            </div>
+            <button class="btn bg-slate-700 hover:bg-slate-600 border-slate-500 py-2 px-4 font-bold" onclick="(function(){ let _e=document.getElementById('interaction-content'); if(_e) renderBianBless(_e); })()">返回</button>
+        </div>`;
+}
 function doBianBless(slotKey) {
-    let item = player.eq[slotKey];
+    let item = player && player.eq ? player.eq[slotKey] : null;
     if (!item) { logSys('該欄位沒有裝備。'); return; }
     if (item.bless === 'cursed') { logSys('<span class="text-red-400 font-bold">被詛咒的裝備無法施加祝福，請先解除詛咒。</span>'); return; }
-    let isAcc = (slotKey === 'ring1' || slotKey === 'ring2' || slotKey === 'ring3' || slotKey === 'ring4' || slotKey === 'amulet' || slotKey === 'belt');
-    let scrollId = (slotKey === 'wpn' || slotKey === 'offwpn') ? 'new_item_bless_wpn' : (isAcc ? 'new_item_bless_acc' : 'new_item_bless_arm');
-    let scrollNm = { 'new_item_bless_wpn':'賦予武器祝福卷軸', 'new_item_bless_arm':'賦予盔甲祝福卷軸', 'new_item_bless_acc':'賦予飾品祝福卷軸' }[scrollId];
-    let sc = player.inv.find(i => i.id === scrollId);
-    if (!sc || sc.cnt < 1) { logSys(`<span class="text-red-400">缺少 ${scrollNm}。</span>`); return; }
-    sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);
-    let pick = Math.floor(lootRng('bianpick') * 3);
-    let msg = '';
-    if (pick === 2) {
-        let rolled = true;   // 祝福分支：必定附加「祝福的」（不再出現詛咒）
-        let curB = item.bless || false;
-        let curN = (curB === true) ? 'blessed' : (curB || false);
-        let rolN = (rolled === true) ? 'blessed' : rolled;
-        if (!curB) { item.bless = rolled; msg = `附加了 <span class="${blessColorClass(rolled)}">${blessName(rolled)}</span>`; }
-        else if (curN === rolN) { let oc = blessColorClass(curB), on = blessName(curB); item.bless = false; msg = `<span class="${oc}">${on}</span> 消失了`; }
-        else { let oc = blessColorClass(curB), on = blessName(curB); item.bless = rolled; msg = `<span class="${oc}">${on}</span> 被 <span class="${blessColorClass(rolled)}">${blessName(rolled)}</span> 取代`; }
-    } else if (pick === 1) {
-        let variants = [true, 'eternal', 'immortal', 'primordial'];
-        let rolled = variants[Math.floor(Math.random() * 4)];
-        let curN = (item.anc === true) ? 'ancient' : (item.anc || false);
+    let _e = document.getElementById('interaction-content'); if (_e) renderBifuBlessChoice(_e, slotKey);
+}
+function doBifuSacredBless(slotKey) {
+    let item = player && player.eq ? player.eq[slotKey] : null;
+    if (!item) { logSys('該欄位沒有裝備。'); return; }
+    if (item.bless === 'cursed') { logSys('<span class="text-red-400 font-bold">被詛咒的裝備無法施加祝福，請先解除詛咒。</span>'); return; }
+    if (item.bless === true) {
+        logSys(`<span class="text-slate-300">這件裝備已經是</span> <span class="${blessColorClass(true)} font-bold">${blessName(true)}</span><span class="text-slate-300">，不需再次施加（不消耗卷軸）。</span>`);
+        let _e = document.getElementById('interaction-content'); if (_e) renderBifuBlessChoice(_e, slotKey);
+        return;
+    }
+    let scrollId = bifuBlessScrollId(slotKey);
+    if (invCountId(scrollId) < 1) { logSys(`<span class="text-red-400">缺少 ${bifuBlessScrollName(scrollId)}。</span>`); return; }
+    consumeMaterialById(scrollId, 1);   // 🔧 背包優先、不足自動扣倉庫
+    item.bless = true;
+    if (DB.items[item.id] && DB.items[item.id].grantSkills) renderSkillSelects();
+    calcStats(); updateUI(); renderTabs(true); saveGame();
+    logSys(`碧火為你的裝備施加祝福 → ${getItemFullName(item)}（附加了 <span class="${blessColorClass(true)}">${blessName(true)}</span>）。`);
+    let _e = document.getElementById('interaction-content'); if (_e) renderBifuBlessChoice(_e, slotKey);
+}
+function doBifuAncientBless(slotKey) {
+    let item = player && player.eq ? player.eq[slotKey] : null;
+    if (!item) { logSys('該欄位沒有裝備。'); return; }
+    if (item.bless === 'cursed') { logSys('<span class="text-red-400 font-bold">被詛咒的裝備無法施加祝福，請先解除詛咒。</span>'); return; }
+    let scrollId = bifuBlessScrollId(slotKey);
+    if (invCountId(scrollId) < 1) { logSys(`<span class="text-red-400">缺少 ${bifuBlessScrollName(scrollId)}。</span>`); return; }
+    consumeMaterialById(scrollId, 1);   // 🔧 一律消耗（背包不足自動扣倉庫）
+
+    let variants = [true, 'eternal', 'immortal', 'primordial'];
+    let cur = item.anc || false;
+    let rolled = variants[Math.floor(Math.random() * variants.length)];
+    // 抽到同樣 → 重抽（避免消失／避免無事發生）
+    if (cur) {
+        let curN = (cur === true) ? 'ancient' : cur;
         let rolN = (rolled === true) ? 'ancient' : rolled;
-        if (!item.anc) { item.anc = rolled; msg = `附加了 <span class="${ancColorClass(rolled)}">${ancName(rolled)}</span>`; }
-        else if (curN === rolN) { let old = ancName(item.anc), oc = ancColorClass(item.anc); item.anc = false; msg = `<span class="${oc}">${old}</span> 消失了`; }
-        else { let old = ancName(item.anc), oc = ancColorClass(item.anc); item.anc = rolled; msg = `<span class="${oc}">${old}</span> 被 <span class="${ancColorClass(rolled)}">${ancName(rolled)}</span> 取代`; }
+        let guard = 0;
+        while (curN === rolN && guard < 20) {
+            rolled = variants[Math.floor(Math.random() * variants.length)];
+            rolN = (rolled === true) ? 'ancient' : rolled;
+            guard++;
+        }
+    }
+    let msg = '';
+    if (!item.anc) {
+        item.anc = rolled;
+        msg = `附加了 <span class="${ancColorClass(rolled)}">${ancName(rolled)}</span>`;
     } else {
-        let rolled = rollAttrAffix();
-        if (!getAttrAffix(item.attr)) { item.attr = rolled; msg = `附加了屬性詞綴`; }
-        else if (attrCanon(item.attr) === attrCanon(rolled)) { item.attr = false; msg = `屬性詞綴 消失了`; }
-        else { item.attr = rolled; msg = `屬性詞綴被取代`; }
+        let old = ancName(item.anc), oc = ancColorClass(item.anc);
+        item.anc = rolled;
+        msg = `<span class="${oc}">${old}</span> 被 <span class="${ancColorClass(rolled)}">${ancName(rolled)}</span> 取代`;
     }
     if (DB.items[item.id] && DB.items[item.id].grantSkills) renderSkillSelects();
     calcStats(); updateUI(); renderTabs(true); saveGame();
-    logSys(`碧恩為你的裝備施加祝福 → ${getItemFullName(item)}（${msg}）。`);
-    let _e = document.getElementById('interaction-content'); if (_e) renderBianBless(_e);
+    logSys(`碧火為你的裝備施加祝福 → ${getItemFullName(item)}（${msg}）。`);
+    let _e = document.getElementById('interaction-content'); if (_e) renderBifuBlessChoice(_e, slotKey);
 }
 function doBianUncurse(slotKey) {
     let item = player.eq[slotKey];
@@ -1011,7 +1043,7 @@ function doBianUncurse(slotKey) {
     sc.cnt--; if (sc.cnt <= 0) player.inv = player.inv.filter(i => i.uid !== sc.uid);
     item.bless = false;
     calcStats(); updateUI(); renderTabs(true); saveGame();
-    logSys(`碧恩為你的裝備解除了詛咒 → ${getItemFullName(item)}。`);
+    logSys(`碧火為你的裝備解除了詛咒 → ${getItemFullName(item)}。`);
     let _e = document.getElementById('interaction-content'); if (_e) renderBianBless(_e);
 }
 function renderBianBless(el) {
@@ -1033,9 +1065,110 @@ function renderBianBless(el) {
     }).join('');
     el.innerHTML = `
         <div class="flex flex-col gap-2 p-1">
-            <div class="text-slate-300 text-sm leading-relaxed">碧恩：我能為你的裝備灌注力量。每次祝福會在「屬性 / 遠古系 / 祝福」三者中平均抽一個詞綴，隨機<b>附加、取代或消除</b>（只影響該詞綴）。</div>
+            <div class="text-slate-300 text-sm leading-relaxed">碧火：我能為你的裝備灌注力量。請選擇要施加「神聖祝福」或「上古祝福」。</div>
             <div class="text-xs text-slate-400">武器用 賦予武器祝福卷軸(持有 ${cnt('new_item_bless_wpn')})；防具用 賦予盔甲祝福卷軸(持有 ${cnt('new_item_bless_arm')})；飾品用 賦予飾品祝福卷軸(持有 ${cnt('new_item_bless_acc')})。含詛咒的裝備可用 解除詛咒的卷軸(持有 ${cnt('new_item_uncurse')}) 移除詛咒。</div>
             ${rows}
+        </div>`;
+}
+
+// ===== 🔥 元素鑲嵌師：屬性強化卷軸（四元素·7%·武器賦予/升階）=====
+function attrMasterEleName(ele) { return ({ fire:'火', water:'水', wind:'風', earth:'地' })[ele] || ele; }
+function attrMasterScrollId(ele) { return ({ fire:'scroll_attr_fire', water:'scroll_attr_water', wind:'scroll_attr_wind', earth:'scroll_attr_earth' })[ele] || ''; }
+function attrMasterCanTier(wpn, nextTier) {
+    let en = (wpn && (wpn.en || 0)) || 0;
+    if (nextTier >= 5) return en >= 11;
+    if (nextTier >= 4) return en >= 10;
+    return true;
+}
+function attrMasterApply(ele) {
+    let sid = attrMasterScrollId(ele);
+    if (!sid) return;
+    let wpn = player && player.eq ? player.eq.wpn : null;
+    if (!wpn) { logSys('<span class="text-red-400 font-bold">你沒有裝備武器，無法使用屬性強化卷軸。</span>'); return; }
+    let have = invCountId(sid);
+    if (have < 1) { logSys(`<span class="text-red-400 font-bold">${DB.items[sid] ? DB.items[sid].n : '屬性強化卷軸'}不足。</span>`); return; }
+
+    let cur = getAttrAffix(wpn.attr);
+    let curEle = cur ? cur.ele : null;
+    let curTier = cur ? cur.tier : 0;
+    let nextTier = 1;
+    if (cur && curEle === ele) nextTier = Math.min(5, curTier + 1);
+
+    // 已滿階：不消耗卷軸
+    if (cur && curEle === ele && curTier >= 5) {
+        logSys(`<span class="text-slate-300">你的武器屬性已達最高階（第5階），無法再提升。</span>`);
+        return;
+    }
+    // +10/+11 門檻：不符合則不消耗
+    if (cur && curEle === ele && !attrMasterCanTier(wpn, nextTier)) {
+        let need = nextTier >= 5 ? 11 : 10;
+        logSys(`<span class="text-red-400 font-bold">武器強化不足。</span><span class="text-red-300">提升至第${nextTier}階需要武器 +${need} 以上。</span>`);
+        return;
+    }
+
+    // 先消耗卷軸（成功/失敗皆消耗）
+    consumeMaterialById(sid, 1);
+
+    let ok = Math.random() < 0.07;
+    if (!ok) {
+        renderTabs(); updateUI(); saveGame();
+        logSys(`<span class="text-slate-300">屬性強化失敗：</span>${attrMasterEleName(ele)}之力未能與武器共鳴（消耗 1 張 ${DB.items[sid] ? DB.items[sid].n : '屬性強化卷軸'}）。`);
+        let _e = document.getElementById('interaction-content'); if (_e) renderAttrMaster(_e);
+        return;
+    }
+
+    // 成功：不同屬性或無屬性 → 變該屬性第1階；同屬性 → 升階
+    let code = (ATTR_ELE_PREFIX[ele] || 'fr') + String(nextTier);
+    if (!cur || curEle !== ele) code = (ATTR_ELE_PREFIX[ele] || 'fr') + '1';
+    wpn.attr = code;
+
+    calcStats(); renderTabs(); updateUI(); saveGame();
+    let aff = getAttrAffix(wpn.attr);
+    let tier = aff ? aff.tier : 1;
+    logSys(`<span class="text-amber-300 font-bold">屬性強化成功！</span>你的武器獲得 <span class="c-attr-${attrCanon(code)} font-bold">${attrMasterEleName(ele)}屬性第${tier}階</span>：${getItemFullName(wpn)}。`);
+    let _e = document.getElementById('interaction-content'); if (_e) renderAttrMaster(_e);
+}
+function renderAttrMaster(el) {
+    let wpn = player && player.eq ? player.eq.wpn : null;
+    let cur = wpn ? getAttrAffix(wpn.attr) : null;
+    let curText = !wpn ? '<span class="text-red-400 font-bold">未裝備武器</span>'
+        : (cur ? `<span class="c-attr-${attrCanon(wpn.attr)} font-bold">${cur.n}（第${cur.tier}階）</span>` : '<span class="text-slate-400">無屬性</span>');
+    let wpnName = wpn ? getItemFullName(wpn) : '<span class="text-slate-500">（未裝備）</span>';
+
+    // 介面對齊 shines871 版本：同一區塊顯示規則、卷軸持有、武器狀態與四元素按鈕
+    let cnt = (ele) => {
+        let sid = attrMasterScrollId(ele);
+        return sid ? invCountId(sid) : 0;
+    };
+    let btn = (ele, label, cls) => {
+        let have = cnt(ele);
+        let disabled = !wpn || have < 1;
+        return `<button class="btn ${disabled ? 'bg-slate-700 border-slate-600 opacity-60 cursor-not-allowed' : cls} py-2 px-3 font-bold shrink-0" ${disabled ? 'disabled' : ''} onclick="attrMasterApply('${ele}')">${label}強化（${have}）</button>`;
+    };
+
+    el.innerHTML = `
+        <div class="flex flex-col gap-3 p-1">
+            <div class="text-slate-300 text-sm leading-relaxed">
+                <b class="text-amber-300">碧恩</b>：我能將四大元素之力銘刻於你手中的武器。每次賦予皆為獨立事件，成功率 <b>7%</b>；失敗僅消耗卷軸，武器不會消失。<br>
+                <span class="text-xs text-slate-400">
+                    無屬性成功→第1階；同屬性成功→提升1階（最高5階）；不同屬性成功→變成該屬性第1階。衝第4階需武器+10以上、第5階需+11以上。
+                </span>
+            </div>
+
+            <div class="text-xs text-slate-400">
+                持有卷軸（含倉庫）：火 ${cnt('fire')} ｜ 水 ${cnt('water')} ｜ 風 ${cnt('wind')} ｜ 地 ${cnt('earth')}
+            </div>
+
+            <div class="bg-slate-800/40 border border-slate-700 rounded p-3 text-sm">
+                <div><b class="text-amber-300">目前武器</b>：${wpnName}</div>
+                <div class="mt-1"><b class="text-amber-300">目前屬性</b>：${curText}</div>
+                <div class="mt-3 flex flex-wrap gap-2">
+                    ${btn('fire', '火', 'bg-emerald-800 hover:bg-emerald-700 border-emerald-600')}
+                    ${btn('water', '水', 'bg-sky-800 hover:bg-sky-700 border-sky-600')}
+                    ${btn('wind', '風', 'bg-teal-800 hover:bg-teal-700 border-teal-600')}
+                    ${btn('earth', '地', 'bg-amber-800 hover:bg-amber-700 border-amber-600')}
+                </div>
+            </div>
         </div>`;
 }
 function ismaelBuyAcc() {
@@ -1264,7 +1397,7 @@ function chooseMastery(id) {
     if (player.mastery === 'e_sword' && id !== 'e_sword' && player.eq.wpn && isEquipCursed('wpn')) {
         let wd = DB.items[player.eq.wpn.id];
         let stillOk = reqAllowsClass(wd, player.cls) || loadUpAllows(player.eq.wpn.id);
-        if (!stillOk) { logSys('<span class="text-red-400 font-bold">手中被詛咒的騎士武器無法卸下，無法切換精通！</span><span class="text-red-300">請先至象牙塔『碧恩』處解除詛咒。</span>'); return; }
+        if (!stillOk) { logSys('<span class="text-red-400 font-bold">手中被詛咒的騎士武器無法卸下，無法切換精通！</span><span class="text-red-300">請先至象牙塔『碧火』處解除詛咒。</span>'); return; }
     }
     // 初次選擇免費；之後每次更換固定 300 萬金幣＋10 張王族搜索狀（不隨次數遞增）
     if (player.mastery !== null) {
@@ -1538,6 +1671,8 @@ function interactNPC(npcId, townId) {
         renderKristaExchange(contentDiv);
     } else if (npc.id === 'npc_bian') {
         renderBianBless(contentDiv);
+    } else if (npc.id === 'npc_attr_master') {
+        renderAttrMaster(contentDiv);
     } else if (npc.id === 'npc_ismael') {
         renderIsmaelExchange(contentDiv);
     } else if (npc.id === 'npc_sherine') {

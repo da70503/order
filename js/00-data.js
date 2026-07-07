@@ -719,10 +719,10 @@ const DB = {
         "scroll_attr_water": { n: "水之武器強化卷軸", type: "misc", p: 100000, c: "c-attr-wa3", noUse: true, gachaWeight: 0, d: "於象牙塔『碧恩』處使用：7% 機率為裝備中武器賦予水屬性或提升水屬性階級（不同屬性成功時變為該屬性第1階；衝第4階需武器+10、第5階需+11；失敗僅消耗卷軸）。" },
         "scroll_attr_wind":  { n: "風之武器強化卷軸", type: "misc", p: 100000, c: "c-attr-wi3", noUse: true, gachaWeight: 0, d: "於象牙塔『碧恩』處使用：7% 機率為裝備中武器賦予風屬性或提升風屬性階級（不同屬性成功時變為該屬性第1階；衝第4階需武器+10、第5階需+11；失敗僅消耗卷軸）。" },
         "scroll_attr_earth": { n: "地之武器強化卷軸", type: "misc", p: 100000, c: "c-attr-ea3", noUse: true, gachaWeight: 0, d: "於象牙塔『碧恩』處使用：7% 機率為裝備中武器賦予地屬性或提升地屬性階級（不同屬性成功時變為該屬性第1階；衝第4階需武器+10、第5階需+11；失敗僅消耗卷軸）。" },
-        "new_item_bless_wpn": { n: "賦予武器祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福武器（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
-        "new_item_bless_arm": { n: "賦予盔甲祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福防具（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
-        "new_item_bless_acc": { n: "賦予飾品祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧恩』處用來祝福飾品（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
-        "new_item_uncurse": { n: "解除詛咒的卷軸", type: "misc", p: 0, c: "text-cyan-200", d: "於象牙塔『碧恩』處用來移除裝備的詛咒（無法直接使用）。", noUse: true, gachaWeight: 0 },
+        "new_item_bless_wpn": { n: "賦予武器祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧火』處用來祝福武器（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
+        "new_item_bless_arm": { n: "賦予盔甲祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧火』處用來祝福防具（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
+        "new_item_bless_acc": { n: "賦予飾品祝福卷軸", type: "misc", p: 0, c: "text-purple-300", d: "於象牙塔『碧火』處用來祝福飾品（無法直接使用）。", isAnc: true, noUse: true, gachaWeight: 0 },
+        "new_item_uncurse": { n: "解除詛咒的卷軸", type: "misc", p: 0, c: "text-cyan-200", d: "於象牙塔『碧火』處用來移除裝備的詛咒（無法直接使用）。", noUse: true, gachaWeight: 0 },
         "new_item_143": { n: "肉", type: "pot", req: "all", p: 1, d: "食用後獲得『誘捕』狀態300秒", eff: "meat", gachaWeight: 0 },
         "new_item_144": { n: "夏洛伯之爪", p: 1, c: "text-blue-300", gachaWeight: 0 },   // 🔧 試煉材料統一藍色
         "new_item_145": { n: "阿吐巴圖騰", p: 667, gachaWeight: 0 },
@@ -1975,7 +1975,8 @@ const DB = {
                 { id: "npc_tas", n: "塔斯", title: "製作", type: "craft", d: "煉藥師塔斯能將純白之力調和成各色靈藥。以 3 個純白的萬能藥，製作任一屬性的萬能藥。" },
                 { id: "npc_bayes", n: "巴耶斯", title: "魔法商人", type: "shop", d: "博覽群書的巴耶斯，書架上盡是深奧的咒文。販售各種高階魔法書。" },
                 { id: "npc_krista", n: "克里斯特", title: "交換物品", type: "exchange", classicHide: true, d: "克里斯特掌管著祝福的奧秘。以施法卷軸與金幣交換『賦予祝福卷軸』。" },
-                { id: "npc_bian", n: "碧恩", title: "祝福裝備", type: "bless", classicHide: true, d: "祝福匠碧恩，能將神聖之力銘刻於裝備之上。用賦予祝福卷軸為身上裝備附加詞綴。" },
+                { id: "npc_bian", n: "碧火", title: "祝福裝備", type: "bless", classicHide: true, d: "祝福匠碧火，能將神聖之力銘刻於裝備之上。用賦予祝福卷軸為身上裝備附加詞綴。" },
+                { id: "npc_attr_master", n: "碧恩", title: "屬性強化", type: "attr", classicHide: true, d: "碧恩能引導四元素卷軸的力量，為你裝備中的武器賦予屬性或提升屬性階級。" },
                 { id: "npc_digallatin", n: "迪嘉勒廷", title: "試煉", type: "quest", d: "嚴苛的試煉主持者迪嘉勒廷，只認可真正的強者。主持騎士、妖精、法師與王族的 50 級試煉（需等級 50 接取；完成階段任務後開啟魔族神殿）。" },
                 { id: "npc_dytite", n: "迪泰特", title: "解除封印", type: "craft", d: "通曉古法的迪泰特，能讀懂被歲月遺忘的封印。以古代的卷軸解除被遺忘裝備的封印，還原成古老的武器與防具。" }
             ]

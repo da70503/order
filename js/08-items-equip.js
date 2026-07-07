@@ -78,8 +78,8 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
 
 // ===== 🔥 屬性詞綴定義（v3.0.77 屬性強化系統改版：4 屬性 × 5 階，只能存在於武器） =====
 // dmg = 額外傷害+N；mp = 額外魔法點數+N（N＝1/3/5/7/9，走 recompute d.extraDmg/d.extraMp·玩家＋傭兵 buildAlly 共用）
-// ele = 一般攻擊轉變的屬性（剋制走 elementCounterMult ×1.4/×0.6）；tier = 階級；碧恩賦予祝福可隨機附加 1/3/5 階屬性詞綴
-// 取得途徑＝碧恩賦予祝福卷軸隨機附加，或屬性強化卷軸（四元素·怪物掉落，目前無 NPC 使用）
+// ele = 一般攻擊轉變的屬性（剋制走 elementCounterMult ×1.4/×0.6）；tier = 階級；屬性詞綴由屬性強化卷軸（象牙塔『碧恩』）賦予/升階
+// 取得途徑＝屬性強化卷軸（四元素·怪物掉落·象牙塔『碧恩』使用）
 const ATTR_AFFIX = {
     fr1: { n: '火之',     ele: 'fire',  tier: 1, dmg: 1, mp: 1 },
     fr2: { n: '爆炎',     ele: 'fire',  tier: 2, dmg: 3, mp: 3 },
@@ -102,7 +102,7 @@ const ATTR_AFFIX = {
     ea4: { n: '輝岩',     ele: 'earth', tier: 4, dmg: 7, mp: 7 },
     ea5: { n: '馬普勒',   ele: 'earth', tier: 5, dmg: 9, mp: 9 },
 };
-const ATTR_ELE_PREFIX = { fire: 'fr', water: 'wa', wind: 'wi', earth: 'ea' };   // 元素 → 代碼字首（碧恩賦予/升階用）
+const ATTR_ELE_PREFIX = { fire: 'fr', water: 'wa', wind: 'wi', earth: 'ea' };   // 元素 → 代碼字首（屬性賦予/升階用）
 // 舊12代碼 → 新代碼（名稱身分不變：火之→fr1、爆炎→fr2、火靈→fr3…）。讀取路徑自動解析（含倉庫舊資料，零寫入）；
 // 玩家側（背包/裝備/傭兵）另由 loadGame 一次性實體改寫為新代碼（見 js/13）。
 const ATTR_LEGACY = {
@@ -120,7 +120,7 @@ function getAttrAffix(attr) {
     let c = attrCanon(attr);
     return c ? ATTR_AFFIX[c] : null;
 }
-// 碧恩賦予祝福：隨機產生屬性詞綴代碼（之60% / 中階30% / 高階10%，四元素均分）
+// （舊機制保留）隨機產生屬性詞綴代碼（之60% / 中階30% / 高階10%，四元素均分）
 function rollAttrAffix() {
     let r = lootRng('attrtier');   // 🎲 committed RNG（防 SL 重抽屬性詞綴階）
     let tier = r < 0.60 ? 1 : (r < 0.90 ? 3 : 5);
@@ -802,7 +802,7 @@ function equipItem(item) {
 function isEquipCursed(slot) { let e = player.eq[slot]; return !!(e && e.bless === 'cursed'); }
 
 function unequipItem(slot) {
-    if (isEquipCursed(slot)) { logSys('<span class="text-red-400 font-bold">這件裝備被詛咒纏身，無法卸下！</span><span class="text-red-300">請至象牙塔『碧恩』處使用 解除詛咒的卷軸 消除詛咒。</span>'); return; }
+    if (isEquipCursed(slot)) { logSys('<span class="text-red-400 font-bold">這件裝備被詛咒纏身，無法卸下！</span><span class="text-red-300">請至象牙塔『碧火』處使用 解除詛咒的卷軸 消除詛咒。</span>'); return; }
     if (player.eq[slot]) {
         let e = player.eq[slot];
         if (e.id === 'wpn_shaha_arrow') {   // 🏝️ 沙哈之箭＝虛擬無限箭：卸下不回背包（避免外洩→販售/存倉/複製）；仍裝沙哈之弓則由 syncShahaArrow 重新注入
