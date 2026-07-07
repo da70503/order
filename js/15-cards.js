@@ -578,7 +578,7 @@ function cardBookBackdrop(ev) { if (ev && ev.target && ev.target.id === 'card-bo
 function _cardMobImg(mob, name) { return mob.img || ('assets/icons/monsters/' + name + '.png'); }
 // 🖼️ v2.7.43 圖鑑縮圖：已收集(非剪影)的動畫怪→合併 idle_s(影子·multiply)＋本體(idle_0)＋idle_w/idle_w2(武器·screen)第一張(同 --multi 共畫布→object-fit:contain 同尺寸像素級對齊)；剪影/無額外圖層→單張本體(維持原樣)。inline style 免依賴 Tailwind class。
 function _codexMobThumbHtml(nm, mi, silh) {
-    let fb = mi.fb.concat(['https://placehold.co/64x64/1e293b/334155?text=%3F']).join('|');
+    let fb = mi.fb.concat(['assets/icons/monsters/遺忘之島.png','assets/favicon.png']).join('|');
     let single = `<img src="${mi.src}" data-fb="${fb}" alt="${nm}" class="w-16 h-16 object-contain${silh}" onerror="_mobImgErr(this)">`;
     if (silh) return single;   // 剪影(未收集)：黑影單張即可
     if (!(typeof MOB_ANIM_NAMES !== 'undefined' && MOB_ANIM_NAMES.has(nm))) return single;

@@ -972,7 +972,7 @@ function _renderMobsImpl() {
                         </div>
                         ${badges}
                         <div class="flex justify-center mb-1 mob-img-wrap">
-                            <span class="mob-img-inner${_innerAnimCls}">${_shadowLayer}<img src="${_mi.src}" data-fb="${_mi.fb.concat(['https://placehold.co/100x100/1e293b/ffffff?text=?']).join('|')}" alt="${m.n}" onerror="_mobImgErr(this)" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}">${_weaponLayer}${_weaponLayer2}</span>
+                            <span class="mob-img-inner${_innerAnimCls}">${_shadowLayer}<img src="${_mi.src}" data-fb="${_mi.fb.concat(['assets/icons/monsters/遺忘之島.png','assets/favicon.png']).join('|')}" alt="${m.n}" onerror="_mobImgErr(this)" class="w-24 h-24 p-1 object-contain pointer-events-none ${hitClass}${m._grace ? ' grace-glow' : ''}">${_weaponLayer}${_weaponLayer2}</span>
                         </div>
                         <div class="flex justify-center items-center gap-2 mb-1" style="height:16px;display:flex;align-items:center;justify-content:center;gap:8px;">${_statRow}</div>
                         ${_hpBar}
