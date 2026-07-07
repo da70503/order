@@ -389,11 +389,11 @@ const CRAFT_RECIPES = {
 // 製作數量選擇器 + 製作按鈕（預設數量 1）
 function craftActionHtml(npcId, idx) {
     // 🔮 席琳製作：成品為 武器/頭盔/盔甲/手套/長靴/斗篷/腰帶 時，於「製作」旁多一顆按鈕
-    //（消耗相同材料＋每件 1 個席琳結晶，成品必定附帶隨機席琳套裝效果；其餘詞綴機率照舊）
+    //（消耗相同材料＋每件 1 個席琳結晶，自選一種席琳套裝效果；其餘詞綴機率照舊）
     let _r = CRAFT_RECIPES[npcId] && CRAFT_RECIPES[npcId][idx];
     let _rd = _r && DB.items[_r.result];
     let _shOk = _rd && !player.classicMode && sherineSetEligible(_rd);   // 🔮 單一真相＝sherineSetEligible（含副手盾牌/臂甲 slot:shield）；勿再 inline 複製部位清單
-    let _shBtn = _shOk ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 font-bold shadow" onclick="doCraft('${npcId}', ${idx}, true)" title="消耗相同材料＋每件 1 個席琳結晶：成品必定附帶一種席琳套裝效果"><span class="c-sherine">席琳製作</span></button>` : '';
+    let _shBtn = _shOk ? `<button class="btn bg-green-900 hover:bg-green-800 border-green-600 py-2 px-3 font-bold shadow" onclick="openSherineCraftPick('${npcId}', ${idx})" title="消耗相同材料＋每件 1 個席琳結晶：自選一種席琳套裝效果"><span class="c-sherine">席琳製作</span></button>` : '';
     return `<div class="flex items-center gap-2 shrink-0">
         <input type="number" min="1" value="1" id="craft-qty-${npcId}-${idx}" onclick="event.stopPropagation()" class="w-14 px-1 py-2 bg-slate-900 border border-slate-600 rounded text-center text-white font-bold">
         <button class="btn bg-blue-700 hover:bg-blue-600 border-blue-500 py-2 px-6 font-bold shadow" onclick="doCraft('${npcId}', ${idx})">製作</button>
@@ -859,41 +859,93 @@ function craftShortfall(recipe, count) {
     for (let q of recipe.req) take(q.id, q.cnt * count);
     return lack;
 }
-function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製作（材料＋每件 1 個席琳結晶，成品必帶套裝效果）
-    let recipe = CRAFT_RECIPES[npcId][recipeIdx];
-    if (!recipe) return;
 
-    // 讀取選擇的製作數量（預設 1）
+// 🔮 席琳製作選套裝：製作前解析數量（不足時 logSys 並回傳 null）
+function resolveCraftMakeCount(npcId, recipeIdx, sherine) {
+    let recipe = CRAFT_RECIPES[npcId] && CRAFT_RECIPES[npcId][recipeIdx];
+    if (!recipe) return null;
     let qtyInput = document.getElementById(`craft-qty-${npcId}-${recipeIdx}`);
     let qty = Math.max(1, parseInt(qtyInput && qtyInput.value) || 1);
-
-    // 計算最多可製作幾個（遞迴：前置材料足夠即可，會自動補製中間物品）
     if (!RECIPE_BY_RESULT) buildRecipeIndex();
     let maxCraftable = maxMakeRecipe(recipe);
-
     if (maxCraftable < 1) {
-        // 材料不足以製作 1 個：列出實際缺少的最底層材料/金幣，方便判斷
         let lack = craftShortfall(recipe, 1);
         let parts = Object.keys(lack).map(id => id === 'gold'
             ? `金幣 ${lack[id]}` : `${(DB.items[id] && DB.items[id].n) || id} ${lack[id]}`);
-        // 🔮 席琳製作：身上與倉庫都沒有席琳結晶時，一併列入缺少清單
-        if (sherine && invCountId('sherine_crystal') < 1) {
-            parts.push('席琳結晶 1');
-        }
+        if (sherine && invCountId('sherine_crystal') < 1) parts.push('席琳結晶 1');
         let detail = parts.length ? `（尚缺：${parts.join('、')}）` : '';
         logSys(`<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">${detail}</span>`);
-        return;
+        return null;
     }
-
-    // 選擇數量超過可製作數時，自動做出可製作的最大量
     let makeCount = Math.min(qty, maxCraftable);
-
-    // 🔮 席琳製作：每件成品消耗 1 個席琳結晶；結晶不足時以結晶數為上限（🔧 含倉庫存量）
     if (sherine) {
         let _cc = invCountId('sherine_crystal');
-        if (_cc < 1) { logSys('<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">（尚缺：席琳結晶 1）</span>'); return; }
+        if (_cc < 1) {
+            logSys('<span class="text-red-400 font-bold">材料不足，無法製作。</span><span class="text-red-300">（尚缺：席琳結晶 1）</span>');
+            return null;
+        }
         if (makeCount > _cc) makeCount = _cc;
     }
+    return { recipe, makeCount };
+}
+
+let _sherineCraftPending = null;
+
+function openSherineCraftPick(npcId, recipeIdx) {
+    let resolved = resolveCraftMakeCount(npcId, recipeIdx, true);
+    if (!resolved) return;
+    let recipe = resolved.recipe;
+    let makeCount = resolved.makeCount;
+    let resItem = DB.items[recipe.result];
+    if (!resItem || !sherineSetEligible(resItem)) return;
+    _sherineCraftPending = { npcId, recipeIdx };
+    let sub = document.getElementById('sherine-pick-subtitle');
+    if (sub) {
+        let totalOut = (recipe.yield || 1) * makeCount;
+        sub.innerHTML = `將製作 <span class="text-slate-200 font-bold">${resItem.n}</span> ×${totalOut}（消耗席琳結晶 ×${makeCount}）`;
+    }
+    let grid = document.getElementById('sherine-pick-grid');
+    if (grid) {
+        grid.innerHTML = SHERINE_EFFECTS.map(name => {
+            let hint = (SHERINE_SET_TEXT[name] && SHERINE_SET_TEXT[name].length)
+                ? SHERINE_SET_TEXT[name].slice(0, 3).join('<br>')
+                : '';
+            return `<button type="button" class="sherine-pick-btn btn text-left p-2.5 bg-slate-800 hover:bg-green-950 border border-slate-600 hover:border-green-600 rounded-lg" data-set="${name}">`
+                + `<span class="c-sherine font-bold text-base block">${name}</span>`
+                + `<span class="text-slate-400 text-xs leading-snug block mt-1">${hint}</span></button>`;
+        }).join('');
+        grid.querySelectorAll('.sherine-pick-btn').forEach(btn => {
+            btn.onclick = () => confirmSherineCraftPick(btn.getAttribute('data-set'));
+        });
+    }
+    let modal = document.getElementById('sherine-pick-modal');
+    if (modal) modal.classList.remove('hidden');
+}
+
+function closeSherineCraftPick() {
+    _sherineCraftPending = null;
+    let modal = document.getElementById('sherine-pick-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+function confirmSherineCraftPick(setName) {
+    if (!_sherineCraftPending || !setName || !SHERINE_EFFECTS.includes(setName)) return;
+    let { npcId, recipeIdx } = _sherineCraftPending;
+    closeSherineCraftPick();
+    doCraft(npcId, recipeIdx, true, setName);
+}
+
+function sherinePickModalBackdrop(e) {
+    if (e && e.target && e.target.id === 'sherine-pick-modal') closeSherineCraftPick();
+}
+
+function doCraft(npcId, recipeIdx, sherine, sherineSetPick) {   // 🔮 sherine=true：席琳製作；sherineSetPick=自選套裝組名
+    let resolved = resolveCraftMakeCount(npcId, recipeIdx, sherine);
+    if (!resolved) return;
+    let recipe = resolved.recipe;
+    let makeCount = resolved.makeCount;
+
+    if (sherine && sherineSetPick && !SHERINE_EFFECTS.includes(sherineSetPick)) sherineSetPick = false;
 
     // 前置：自動補製不足的中間物品（maxMakeRecipe 已確認整體可行）
     for (let r of recipe.req) ensureMaterial(r.id, r.cnt * makeCount, 0);
@@ -910,13 +962,16 @@ function doCraft(npcId, recipeIdx, sherine) {   // 🔮 sherine=true：席琳製
     _noAffixCtx = _isPetGear;   // 🦴 寵物裝備＝白板：擋詞綴/套裝效果
     try {
         for (let k = 0; k < makeCount; k++) {
-            _forceSherineSet = !!sherine;   // 🔮 席琳製作：每件成品必定附帶隨機一種席琳套裝效果（寵物裝備 slot 非席琳適用部位，gainItem 自然不附）
-            gainItem(recipe.result, recipe.yield || 1, true, false);   // 🦴 forceNormal=false → 傳統自帶強化值生效；詞綴/套裝由 _noAffixCtx 擋（寵物裝備白板）
+            _forceSherineSetPick = (sherine && sherineSetPick) ? sherineSetPick : false;
+            _forceSherineSet = !!(sherine && !_forceSherineSetPick);
+            gainItem(recipe.result, recipe.yield || 1, true, false);
             _forceSherineSet = false;
+            _forceSherineSetPick = false;
         }
-    } finally { _tradLootCtx = false; _forceSherineSet = false; _noAffixCtx = false; }   // try/finally：例外也必清旗標，杜絕殘留洩漏
+    } finally { _tradLootCtx = false; _forceSherineSet = false; _forceSherineSetPick = false; _noAffixCtx = false; }
     let totalOut = (recipe.yield || 1) * makeCount;
-    logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${getItemColor({ id: recipe.result })} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}`);
+    let _setNote = (sherine && sherineSetPick) ? ` · 套裝 <span class="c-sherine font-bold">${sherineSetPick}</span>` : '';
+    logSys(`${sherine ? '<span class="c-sherine font-bold">席琳製作</span>' : '製作'}完成：<span class="${getItemColor({ id: recipe.result })} font-bold">${DB.items[recipe.result].n}</span> ×${totalOut}${sherine ? `（消耗 席琳結晶 ×${makeCount}）` : ''}${_setNote}`);
 
     // 重新渲染介面與左側狀態列
     updateUI();

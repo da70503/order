@@ -38,7 +38,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
 
     // 🔮 席琳套裝效果：指定部位（武器/頭盔/盔甲/手套/長靴/斗篷/腰帶）※項鍊已改為腰帶
     //  - 席琳的世界擊殺掉落：一般怪0.1%、恩賜怪0.5%、頭目5%（9 組均勻抽一；🔮 瘋狂的席琳世界再 ×3）
-    //  - 席琳製作（_forceSherineSet）：必定附帶隨機一種
+    //  - 席琳製作（_forceSherineSetPick／_forceSherineSet）：必定附帶指定或隨機一種
     let seteff = false;
     if (d) {
         let _slotOk = sherineSetEligible(d);
@@ -46,7 +46,10 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
             seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
             logSys(`<span class="c-sherine font-bold">✦ 掉落的裝備蘊含著席琳的祝福：【${seteff}】！</span>`);
         }
-        if (_slotOk && !seteff && _forceSherineSet) {
+        if (_slotOk && !seteff && _forceSherineSetPick && SHERINE_EFFECTS.includes(_forceSherineSetPick)) {
+            seteff = _forceSherineSetPick;
+            logSys(`<span class="c-sherine font-bold">✦ 席琳結晶引導出套裝效果：【${seteff}】！</span>`);
+        } else if (_slotOk && !seteff && _forceSherineSet) {
             seteff = SHERINE_EFFECTS[Math.floor(lootRng('setpick') * SHERINE_EFFECTS.length)];
             logSys(`<span class="c-sherine font-bold">✦ 席琳結晶引導出套裝效果：【${seteff}】！</span>`);
         }

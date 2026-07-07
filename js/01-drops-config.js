@@ -505,7 +505,8 @@ function sherineWorldActive() { return !!(player && (player.sherineWorld || play
 function sherineMadActive() { return !!(player && player.sherineMad); }   // 🔮 僅「瘋狂的席琳世界」：供倍率分流
 function applySherineTheme() { document.body.classList.toggle('sherine-world', sherineWorldActive()); document.body.classList.toggle('sherine-mad', sherineMadActive()); }
 let _sherineLootCtx = null;   // 擊殺掉落上下文：killMob 期間設定（{boss,grace}），供 gainItem 判定詞綴×3 與套裝效果
-let _forceSherineSet = false;   // 🔮 席琳製作：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
+let _forceSherineSet = false;   // 🔮 席琳製作／兌換：成品必定附帶隨機套裝效果（doCraft 產出期間設定）
+let _forceSherineSetPick = false;   // 🔮 席琳製作（玩家自選）：指定套裝組名（SHERINE_EFFECTS 之一）；優先於 _forceSherineSet 隨機
 let _tradLootCtx = false;   // 🏛️ 傳統模式「掠奪上下文」（⚠️v3.0.83 傳統模式已取消：旗標已無消費者·僅保留宣告讓各處 set/restore 站點不拋錯）
 let _noAffixCtx = false;    // 🦴 「白板上下文」：設 true 時 gainItem 不附加詞綴（祝福/詛咒/屬性）但仍放行傳統自帶強化值——供寵物裝備製作（白板＋隨機強化值，機率同飾品）
 let _vfxLootCtx = false;   // ✨ VFX：擊殺掉落期間設 true，供 gainItem 判定稀有(潘朵拉權重=1)掉落閃光
