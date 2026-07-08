@@ -876,7 +876,7 @@ function autoCastSpells() {
     let atkSk = document.getElementById('sel-atk-skill').value;
     let atkThr = parseInt(document.getElementById('set-mp-atk').value) || 0;
     let atkTarget = getTarget();
-    if(atkSk && mpPct >= atkThr && atkTarget && (player.cds.castLock || 0) <= 0) {   // 🔮 天堂職業施法冷卻下限：castLock 未歸零前不自動施放攻擊魔法（法師快·王族/黑妖慢）
+    if(atkSk && mpPct >= atkThr && atkTarget && (player.cds.castLock || 0) <= 0 && (player.cds.atkSk || 0) <= 0) {   // 🔮 castLock＋atkSk 雙重閘門：避免冷卻中每 tick 空呼叫 castSkill（施法動畫誤觸發）
         // 標籤型即死技能（起死回生術→不死、釋放元素→元素）：
         //   僅在「目標具備對應標籤且非 BOSS」時才自動施放，避免對多羅等無效目標空放、浪費 MP 與冷卻。
         let skDef = DB.skills[atkSk];
@@ -893,7 +893,7 @@ function autoCastSpells() {
     // 🤝 v3.0.94 隊長治癒也幫隊員：觸發條件改看「隊伍(玩家＋未倒地傭兵)最低 HP%」——隊員低於門檻也會施放（castSkill 治癒分支自會選 HP% 最低者施放）
     let _teamLowPct = hpPct;
     (player.allies || []).forEach(a => { if (a && !a._downed && (a.curHp || 0) > 0 && (a.mhp || 0) > 0) { let _p2 = (a.curHp / a.mhp) * 100; if (_p2 < _teamLowPct) _teamLowPct = _p2; } });
-    if(healSk && _teamLowPct <= healThr) castSkill(healSk);
+    if(healSk && _teamLowPct <= healThr && (player.cds.healSk || 0) <= 0) castSkill(healSk);   // 治癒冷卻歸零才嘗試（同上·避免空觸發施法動畫）
 }
 
 // 詞綴抽取（新制）：掉落/製作/潘朵拉/血盟 等管道只會隨機產生「祝福的」(bless) 1%；不再有單/雙/三詞綴或屬性/遠古的隨機掉落。
