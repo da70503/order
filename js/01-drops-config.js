@@ -1335,16 +1335,16 @@ function getLoadColor(tier){ return ['text-white','text-yellow-400','text-orange
 // 🪆 取目前裝備之魔法娃娃的某 % 欄位值（expBonus/goldBonus/potionBonus…；未裝娃娃→0）
 function dollFieldVal(field){ let e = player.eq && player.eq.doll; let dd = e ? DB.items[e.id] : null; return (dd && dd[field]) || 0; }
 
-// ===== 🔧 強化系統：上限與分段加成（武器+20 / 防具+15 / 飾品+5）=====
+// ===== 🔧 強化系統：上限與分段加成（武器+15 / 防具+15 / 飾品+5）=====
 //  +0~+10 維持原本「每階 +1」線性；+11 起在「+10 的量」之上再加下表（表值＝超過 +10 的額外部分）。
-//  名稱一律顯示 +N（夾擠至上限：武器+20/防具+15/飾品+5；過往超過上限資料以上限顯示與套用，見 getItemFullName / capEn）。
-const ENHANCE_CAP = { wpn: 20, arm: 15, acc: 5 };
+//  名稱一律顯示 +N（夾擠至上限：武器+15/防具+15/飾品+5；過往超過上限資料以上限顯示與套用，見 getItemFullName / capEn）。
+const ENHANCE_CAP = { wpn: 15, arm: 15, acc: 5 };
 function enhanceCap(d) { return (d && ENHANCE_CAP[d.type]) || 10; }                          // 依物品類型取強化上限
 function isMaxEnhanced(item) { let d = DB.items[item.id]; return !!d && (Number(item.en) || 0) >= enhanceCap(d); }
 // 🔧 強化值上限夾擠：凡「隨強化提升」的基本能力與特效（額外傷害/命中、MP自然恢復、吸取MP、觸發機率、特效傷害…）
-//    一律以淬鍊上限計算——武器超過 +20 以 +20 計、防具超過 +15 以 +15 計、飾品超過 +5 以 +5 計。
+//    一律以淬鍊上限計算——武器超過 +15 以 +15 計、防具超過 +15 以 +15 計、飾品超過 +5 以 +5 計。
 function capEn(en, d) { return Math.min(Math.max(0, Number(en) || 0), enhanceCap(d)); }
-function capWpnEn(en) { return Math.min(Math.max(0, Number(en) || 0), ENHANCE_CAP.wpn); }   // 武器專用（上限 +20）
+function capWpnEn(en) { return Math.min(Math.max(0, Number(en) || 0), ENHANCE_CAP.wpn); }   // 武器專用（上限 +15）
 // 🛡️ runtime 合理性檢查：把「遊戲規則上不可能」的玩家數值夾回合法範圍，抓「隨手用 DevTools Console / 改存檔」調參數的笨外掛。
 //    只夾「有硬性上限、超過即證明不可能」者：等級≤100（checkLvUp 硬上限）、裝備強化值≤各類上限、經驗/金幣為非負有限數。
 //    ⚠️金幣的「高但合法」值與屬性點(player.base/bonus)無乾淨上限 → 刻意不夾，避免誤傷合法玩家（純客戶端分辨不出高額合法 vs 作弊）。
@@ -1361,22 +1361,22 @@ function sanitizeState() {
 }
 // 武器強化 → { dmg:額外傷害, hit:額外命中 }
 //  +0~+10：每階 額外傷害+1、額外命中+1（線性）。
-//  +11~+20：取消額外傷害加成（額外傷害維持在 +10 的量＝10）；額外命中沿用「累積」（在 +10 之上再加下表）；
+//  +11~+15：取消額外傷害加成（額外傷害維持在 +10 的量＝10）；額外命中沿用「累積」（在 +10 之上再加下表）；
 //           傷害成長改由「最終傷害倍率」提供（enhanceWpnFinalMult，非累加、取該階段數值）。
-const WPN_EN_HIT_OVER10 = { 11:1, 12:2, 13:4, 14:6, 15:8, 16:11, 17:14, 18:17, 19:21, 20:25 };   // +11~+20 額外命中（超過 +10 的「累加」量；每階增量 1,1,2,2,2,3,3,3,4,4 逐級累加 → 總命中 +11/+12/+14/+16/+18/+21/+24/+27/+31/+35）
+const WPN_EN_HIT_OVER10 = { 11:1, 12:2, 13:4, 14:6, 15:8, 16:11, 17:14, 18:17, 19:21, 20:25 };   // +11~+20 額外命中（實際會被 ENHANCE_CAP.wpn 夾到 +15；表保留供上游/舊存檔參考）
 function enhanceWpnBonus(en) {
     en = Math.max(0, Number(en) || 0);
     let base = Math.min(en, 10);                                                            // +10 以內：每階 +1
-    let hitOver = (en > 10) ? (WPN_EN_HIT_OVER10[Math.min(en, 20)] || 0) : 0;               // +11~+20：額外命中累積
-    return { dmg: Math.min(en, 20), hit: base + hitOver };                                  // 🔧 額外傷害每階+1、全程延伸到+20（原+10封頂取消）；額外命中+1~+10後依表續加（最高總+35@+20）
+    let hitOver = (en > 10) ? (WPN_EN_HIT_OVER10[Math.min(en, ENHANCE_CAP.wpn)] || 0) : 0;  // +11~+15：額外命中累積（上限依武器淬鍊）
+    return { dmg: Math.min(en, ENHANCE_CAP.wpn), hit: base + hitOver };                      // 額外傷害/命中皆不超過武器淬鍊上限（+15）
 }
-// 武器強化 → 最終傷害倍率（一般物理攻擊）；+1~+20「取該階段數值」（非累加），+0 為 1.0
-// 基準曲線（最高檔）：+1 ×1.02（平緩）→ +10 ×1.37 → +20 ×2.50（爆發）；總數值 100→250 對應的倍率（總數值/100）。
+// 武器強化 → 最終傷害倍率（一般物理攻擊）；+1~+15「取該階段數值」（非累加），+0 為 1.0（曲線表仍保留到 +20 但會被上限夾擠）
+// 基準曲線（最高檔）：+1 ×1.02（平緩）→ +10 ×1.37 → +15 ×1.83（+20 ×2.50 為舊上限時的延伸值）
 const WPN_EN_FINALMULT = {
     1:1.02, 2:1.04, 3:1.06, 4:1.09, 5:1.12, 6:1.15, 7:1.19, 8:1.24, 9:1.30, 10:1.37,
     11:1.45, 12:1.53, 13:1.62, 14:1.72, 15:1.83, 16:1.95, 17:2.08, 18:2.21, 19:2.35, 20:2.50
 };
-// 🔧 v2.6.65：+20 上限依「潘朵拉權重」分五級（曲線形狀相同·bonus 部分等比縮放）
+// 🔧 v2.6.65：依「潘朵拉權重」分五級（曲線形狀相同·bonus 部分等比縮放）
 //    分級用「未加倍」權重：js/14 initGachaWeights 對權重≥50 一律×2（提高低稀有度出現率）→ runtime≥100 者先還原÷2 再分級
 //    權重1→×2.5；2~20→×2.25；21~50→×2.0；51~75→×1.75；76~100→×1.5；權重0(非潘朵拉)：legend 傳說→×2.5、其餘(店賣/量產)→×1.5
 function wpnEnCurveMax(def) {
@@ -1395,10 +1395,10 @@ function wpnEnCurveMax(def) {
 function enhanceWpnFinalMult(en, def) {
     en = Math.max(0, Number(en) || 0);
     if (en < 1) return 1;
-    let base = WPN_EN_FINALMULT[Math.min(en, 20)] || 1;
+    let base = WPN_EN_FINALMULT[Math.min(en, ENHANCE_CAP.wpn)] || 1;   // 依武器淬鍊上限夾（+15）
     let mx = wpnEnCurveMax(def);
     if (mx === 2.5) return base;                 // 最高檔＝基準曲線原值
-    return Math.round((1 + (base - 1) * (mx - 1) / 1.5) * 100) / 100;   // bonus 等比縮放（+20 恰為 mx·四捨五入至2位）
+    return Math.round((1 + (base - 1) * (mx - 1) / 1.5) * 100) / 100;   // bonus 等比縮放（曲線表在最高檔 mx=2.5 時為原值）
 }
 function wpnEnFinalMult(wpnInst) { return enhanceWpnFinalMult(wpnInst && wpnInst.en, wpnInst && DB.items[wpnInst.id]); }      // 由武器實例取倍率（未裝備→1）
 
@@ -1468,13 +1468,11 @@ function atkSpdApm(p, id) {
 function atkSpdBaseItv(p) { return Math.round(6000 / Math.max(1, atkSpdApm(p))) / 100; }   // 基礎攻擊間隔（秒·2位小數·未含加速/精通等倍率）
 function hitstunTicks(p) { let av = (p && p.avatar && HITSTUN_TICKS[p.avatar]) ? p.avatar : ATK_AV_BY_CLS[(p && p.cls) || '']; return HITSTUN_TICKS[av] != null ? HITSTUN_TICKS[av] : 5; }   // ⚔️ 職業硬直 tick（被擊時延遲攻擊）
 function castLockTicks(p) { let av = (p && p.avatar && CAST_TICKS[p.avatar]) ? p.avatar : ATK_AV_BY_CLS[(p && p.cls) || '']; return CAST_TICKS[av] != null ? CAST_TICKS[av] : 12; }   // 🔮 職業施法冷卻下限 tick
-// 防具強化 → AC 減免量（值越大防禦越好）；+11~+15 的表值為「超過 +10」的額外量
-const ARM_EN_OVER10 = { 11:2, 12:4, 13:6, 14:8, 15:10 };   // 🔧 超過+10的「累計」額外AC；+11~+15 每階增量 +2（合計+10）→ AC 額外 12/14/16/18/20
 function enhanceArmAc(en) {
+    // 防具強化 → AC 減免量（值越大防禦越好）：線性，每 +1 固定 AC−1（與傳統天堂體感一致）
+    //（強化值上限仍由 ENHANCE_CAP.arm 控制；此處多一道夾上限防呆）
     en = Math.max(0, Number(en) || 0);
-    let base = Math.min(en, 10);
-    let over = (en > 10) ? (ARM_EN_OVER10[Math.min(en, 15)] || 0) : 0;
-    return base + over;
+    return Math.min(en, (typeof ENHANCE_CAP !== 'undefined' && ENHANCE_CAP.arm != null) ? ENHANCE_CAP.arm : 15);
 }
 
 // ===== 🏛️ 傳統模式（⚠️v3.0.83 已取消）=====
