@@ -64,8 +64,16 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     // 紀錄這次產生的物品屬性
     let itemInfo = { id: id, cnt: cnt, en: _tEn, bless: bless, anc: anc, attr: attr, seteff: seteff };
     
-    if (!silent && d) {
-        logSys(`獲得物品: <span class="font-bold">${getItemFullName(itemInfo)}</span>`);
+    if (d) {
+        let _nm = getItemFullName(itemInfo);
+        let _rareFlash = _vfxLootCtx && d.gachaWeight === 1;   // 擊殺掉落·潘朵拉權重=1＝會播頭上閃字者
+        // 稀有掉落要「一定」留痕：某些獲得路徑會用 silent=true（避免洗版），但稀有掉落若不記錄會讓玩家錯過。
+        // 非稀有則維持既有規則：silent=true 時不寫。
+        if (_rareFlash) {
+            logSys(`<span class="text-amber-300">獲得稀有物品: </span><span class="text-yellow-400 font-bold">${_nm}</span>${cnt > 1 ? ' ×' + cnt : ''}`);
+        } else if (!silent) {
+            logSys(`獲得物品: <span class="font-bold">${_nm}</span>`);
+        }
     }
     renderTabs();
     if(DB.items[id] && DB.items[id].grantSkills) { calcStats(); renderSkillSelects(); }   // 取得授予技能的頭盔：立即生效

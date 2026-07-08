@@ -875,26 +875,28 @@ function startGameTimers() {
 }
 
 // 補跑（掛機/背景）所得累積：補跑期間 logSys 被靜音，先把所得累積起來，
-// 等真正回到即時（n===1）且累積時間達門檻時，才統一輸出一次，避免每次小補跑都洗版。
-const AWAY_SUMMARY_MIN_MS = 3000;    // 累積補跑時間達 3 秒才輸出「掛機期間獲得」訊息
+// 回到即時（n===1）時 flushAwaySummary 統一補述：≥3 秒→「掛機期間獲得」；<3 秒→緊湊「獲得物品：[a、b、c]」（避免短補跑漏訊息）。
+const AWAY_SUMMARY_MIN_MS = 3000;    // 累積補跑時間達 3 秒→掛機期間獲得；未達則緊湊一行補述
 let _awayAcc = { ticks: 0, gold: 0, items: {} };
 function flushAwaySummary() {
     if (_awayAcc.ticks <= 0) return;
-    if (_awayAcc.ticks * TICK_MS >= AWAY_SUMMARY_MIN_MS) {
-        let gains = [];
-        for (let id in _awayAcc.items) {
-            if (_awayAcc.items[id] > 0 && DB.items[id]) gains.push({ id, n: _awayAcc.items[id] });
-        }
-        if (gains.length) {
+    let gains = [];
+    for (let id in _awayAcc.items) {
+        if (_awayAcc.items[id] > 0 && DB.items[id]) gains.push({ id, n: _awayAcc.items[id] });
+    }
+    if (gains.length) {
+        if (_awayAcc.ticks * TICK_MS >= AWAY_SUMMARY_MIN_MS) {
             logSys(`掛機期間獲得：` + gains
                 .map(g => `<span class="${getItemColor({ id: g.id, en: 0 })} font-bold">${DB.items[g.id].n} ×${g.n}</span>`)
                 .join('、'));
-        }
-        if (_awayAcc.gold > 0) {
-            /* 🔧 掛機期間獲得的金幣不輸出日誌（已計入 player.gold、即時顯示於左側面板）；賣出/花費/消耗等金幣訊息仍保留 */
+        } else {
+            let list = gains.map(g => DB.items[g.id].n + (g.n > 1 ? '×' + g.n : '')).join('、');
+            logSys(`獲得物品：[${list}]`);   // 短補跑（<3秒）·緊湊補述
         }
     }
-    // 無論是否達門檻都清空（未達門檻者視為一般即時遊玩的計時抖動，不輸出）
+    if (_awayAcc.gold > 0) {
+        /* 補跑金幣不輸出日誌（已計入 player.gold）；賣出/花費等金幣訊息仍保留 */
+    }
     _awayAcc = { ticks: 0, gold: 0, items: {} };
 }
 
@@ -1309,7 +1311,7 @@ function initSysLogLock() {
 }
 
 function logSys(msg) {
-    if(state.ff) return; // 補跑期間不洗版
+    if(state.ff) return; // 補跑期間不洗版（改由 flushAwaySummary「掛機期間獲得」彙整）
     const el = document.getElementById('sys-log');
     el.insertAdjacentHTML('beforeend', `<div class="log-entry text-slate-100">${msg}</div>`);   // 🚀 同戰鬥日誌：只解析新訊息，避免 innerHTML+= 重建全部
     // 🔒 鎖定捲動時保留更多歷史（150 行）；未鎖定時維持一般上限（50 行）
