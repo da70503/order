@@ -515,7 +515,7 @@ function updateCreateUI() {
 
 function onToggleClassic(el) {
     if (!el.checked) return;   // 取消勾選不需確認
-    let ok = confirm('⚔ 經典模式（硬核挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 死亡 → 損失該等級 5% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n（掉落率、經驗值與金幣獲得皆與一般模式相同）\n\n確定要以「經典模式」創建此角色嗎？');   // ⚠️v3.0.82 經驗×0.5／金幣÷2 已移除、v3.0.85 掉落×1/10 已移除 → 文案同步
+    let ok = confirm('⚔ 經典模式（困難挑戰）\n\n開啟後，此角色將「永久」套用下列規則，建立後無法關閉：\n\n‧ 升級需求採用「天堂經典經驗表」（難度遠高於一般模式）\n‧ 組隊時經驗先加成再均分（有傭兵時隊長不再拿滿額）\n‧ 死亡 → 損失該等級 5% 最大經驗（不會降等）\n‧ 無法賦予裝備祝福、無法進行職業精通\n‧ 無法進入「席琳的世界」\n\n（打怪經驗總量、金幣與掉落率與一般模式相同；單練時組隊均分不生效）\n\n確定要以「經典模式」創建此角色嗎？');
     if (!ok) { el.checked = false; return; }
 }
 function startGame() {
@@ -540,7 +540,7 @@ function startGame() {
     player.classicMode = !!(document.getElementById('create-classic-toggle') && document.getElementById('create-classic-toggle').checked);   // 🎮 經典模式：依創角開關決定（此角色永久生效）；🏛️v3.0.83 傳統模式已取消（traditionalMode 由 SAVE_DEFAULTS 恆 false）
     player.name = null;   // 預設未取名，狀態欄顯示「點擊取名」，玩家可點擊命名
     player.enSeed = 'es' + uid() + uid();   // 🎲 強化決定論種子（創角產生一次、存進存檔永久固定）：讓強化成敗由種子決定、不可用 save/load 刷
-    player.expMigV = 3;   // 新角色使用 v2.6.40 升級需求表（expMigV=3）
+    player.expMigV = player.classicMode ? 4 : 3;   // 新角色：一般＝分段放大表(3)、經典＝天堂表(4)
 
     let b = createBase[curCreate.cls];
     player.base = { str: b.str+curCreate.str, dex: b.dex+curCreate.dex, con: b.con+curCreate.con, int: b.int+curCreate.int, wis: b.wis+curCreate.wis, cha: b.cha+curCreate.cha };
@@ -840,8 +840,8 @@ function loadGame() {
             const EXP_MIG_OLD_BASE = 36065092;   // v2.6.40 前 Lv49+ 的固定升級需求（＝EXP_T[49]，新制 getExpReq 的未放大基準）
             let _mlv = player.lv || 1;
             if (_mlv >= 50 && _mlv < 100 && (player.exp || 0) > 0 && player.exp < EXP_MIG_OLD_BASE) {
-                let _factor = Math.round(getExpReq(_mlv) / EXP_MIG_OLD_BASE);   // 2,4,8,…,1024（整數·精確）
-                if (_factor > 1) player.exp = Math.min(Math.floor(player.exp * _factor), getExpReq(_mlv) - 1);   // 夾在「不足以升級」→ 不白升等
+                let _factor = Math.round(_expReqOldV1(_mlv) / EXP_MIG_OLD_BASE);   // 2,4,8,…,1024（整數·精確）
+                if (_factor > 1) player.exp = Math.min(Math.floor(player.exp * _factor), _expReqOldV1(_mlv) - 1);   // 夾在「不足以升級」→ 不白升等
             }
             player.expMigV = 1;   // 標記本檔已遷移（存檔時固化·跨載入不重跑）
         }
@@ -859,6 +859,19 @@ function loadGame() {
             player.expMigV = 3;
         }
         if ((player.expMigV || 0) < 3) player.expMigV = 3;   // 其餘舊檔標記為現行刻度（略過已廢止的天堂表 mig2）
+        // 🎮 經典模式：升級需求改天堂表；舊經典存檔（expMigV<4）以進度 % 等比換算該級剩餘經驗。
+        if (player.classicMode && (player.expMigV || 0) < 4) {
+            let _migClassic = (lv, exp) => {
+                lv = Math.max(1, Math.min(100, Math.floor(lv || 1)));
+                if (lv >= 100) return 0;
+                let o = _expReqOldV1(lv), c = _expReqClassic(lv);
+                if (!isFinite(c) || !isFinite(o) || o <= 0) return exp || 0;
+                return Math.min(Math.floor(Math.max(0, exp || 0) / o * c), c - 1);
+            };
+            player.exp = _migClassic(player.lv, player.exp);
+            (player.allies || []).forEach(a => { if (a && a.classicMode) a.exp = _migClassic(a.lv, a.exp); });
+            player.expMigV = 4;
+        }
         // 🏛️ v3.0.83 傳統模式已取消：舊傳統角色一次性併入對應基礎模式（一般+傳統→一般、經典+傳統→經典）。
         //   共用倉庫/圖鑑桶另由 js/12 _mergeTradBuckets 於頁面載入時合併（'_tradonly'→''、'_trad'→'_classic'）。
         //   已入血盟的舊傳統角色補發入盟禮（傳統入盟時未發放·現行退盟一律需交還）；王族入盟本無禮物、不補發。

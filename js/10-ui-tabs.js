@@ -1949,7 +1949,7 @@ function renderSquadPanel() {
             let t = document.getElementById('squad-mp-txt-' + s); if (t) t.innerText = cur + '/' + mmp;
         }
         if ((el = document.getElementById('squad-exp-' + s))) {
-            let req = (typeof getExpReq === 'function') ? getExpReq(a.lv || 1) : 0;
+            let req = (typeof getExpReq === 'function') ? getExpReq(a.lv || 1, a.classicMode) : 0;
             let pct = (req > 0 && isFinite(req)) ? ((a.exp || 0) / req) * 100 : 0;
             el.style.width = Math.min(100, Math.max(0, pct)) + '%';
             let t = document.getElementById('squad-exp-txt-' + s); if (t) t.innerText = pct >= 100 ? '滿' : pct.toFixed(1) + '%';   // 不即時升級→累積超過一級顯「滿」（解雇可回收）

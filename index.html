@@ -121,10 +121,10 @@
                     </div>
                 </div>
                 
-                <label class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（硬核）規則，無法事後關閉">
+                <label class="flex items-center gap-2 mt-2 px-1 cursor-pointer select-none" title="開啟後此角色永久套用經典（困難）規則：天堂經驗表、死亡噴經驗等，無法事後關閉">
                     <input type="checkbox" id="create-classic-toggle" onchange="onToggleClassic(this)" class="w-5 h-5 accent-amber-600 shrink-0">
                     <span class="text-amber-300 font-bold shrink-0">經典模式</span>
-                    <span class="text-slate-400 text-xs">死亡噴經驗、無祝福/精通/席琳（永久；掉落率、經驗與金幣獲得與一般模式相同）</span>
+                    <span class="text-slate-400 text-xs">天堂經驗表、組隊均分、死亡噴經驗、無祝福/精通/席琳（永久；單練時打怪經驗與一般相同）</span>
                 </label>
                 <div class="flex gap-4 shrink-0 mt-3">
                     <button onclick="backToMenu()" class="btn w-1/4 py-2.5 text-base">返回</button>
@@ -180,7 +180,7 @@
         <div id="col-left" class="w-[340px] flex flex-col gap-4">
             <!-- 新增了 id="status-panel"，並加入去底色與加深背景的樣式確保文字可讀 -->
             <div id="status-panel" class="panel bg-cover bg-top bg-no-repeat" style="background-blend-mode: multiply; background-color: rgba(30, 41, 59, 0.85);">
-                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（硬核）：死亡損失該等級 5% 最大經驗（不降等）、無祝福/精通/席琳；掉落率、經驗與金幣獲得與一般模式相同">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
+                <div class="panel-header text-center flex justify-between bg-transparent border-b border-slate-700"><span class="flex items-center shrink-0"><span id="st-classname">職業</span><span id="classic-badge" class="hidden font-bold ml-1" style="color:#fbbf24;text-shadow:0 0 5px rgba(251,191,36,0.7);font-size:0.85rem;line-height:1;" title="經典模式（困難）：天堂經驗表、組隊經驗均分、死亡損失該等級 5% 最大經驗（不降等）、無祝福/精通/席琳；單練打怪經驗與一般相同">⚔經典</span></span><span id="victory-badge" class="hidden font-bold" style="color:#fde68a;text-shadow:0 0 6px rgba(253,230,138,0.85);font-size:1.4rem;line-height:1;align-items:center;gap:0.15rem;" title="攻城獲勝期間：全商店8折、開放獲勝城池"><span style="font-size:1.05em;line-height:1;position:relative;top:-0.08em;">👑</span><span style="line-height:1;">攻城獲勝</span></span><span id="st-class" class="text-white text-lg font-bold cursor-pointer hover:bg-slate-700/50 rounded px-2 inline-block min-w-[2.5rem] text-right" title="點擊此處修改名稱" onclick="startEditName()"></span></div>
                 <div class="p-4 space-y-3 text-base">
                     <div class="flex justify-between text-slate-400 border-b border-slate-700 pb-2"><span>等級</span> <span class="text-white font-bold text-xl" id="st-lv">1</span></div>
                     <div class="flex justify-between text-slate-400"><span>防禦 (AC)</span> <span class="text-white font-bold" id="st-ac">10</span></div>
