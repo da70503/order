@@ -54,6 +54,8 @@ function summonTick(sm, clearFn, owner) {
     if(!sm) return;
     if(state.ticks >= sm.endTick || (sm.skId && ((owner.buffs && owner.buffs[sm.skId]) || 0) <= 0)) {
         logCombat(`<span class="text-purple-300">${sm.n}</span> 消失了。`, 'magic');
+        // 🔧 召喚物消失時同步歸零對應 buff（endTick 先到而 buff 秒數仍 >0 時，殘留 buff 會擋 autoActions 不再施放→離線補跑後精靈消失卻不重召）
+        if (sm.skId && owner.buffs) owner.buffs[sm.skId] = 0;
         clearFn(); return;
     }
     if(--sm.cd <= 0) { sm.cd = sm.interval; summonAttack(sm, owner); }
