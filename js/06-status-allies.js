@@ -1705,6 +1705,10 @@ function allyAutoCastableSkills(ally) {
     for (let i = 0; i < ally.skills.length; i++) {
         let sid = ally.skills[i]; if (seen[sid]) continue;
         let sk = DB.skills[sid]; if (!sk) continue;
+        // 🌿 reqEle / reqEleAny：此處依「傭兵自身」屬性判可維持（避免跨屬性維持大地/水之元氣等）
+        //  - 注意：這裡的 elfEle 是「妖精屬性」，不是法術的傷害屬性 ele。
+        if (sk.reqEle && ally.elfEle !== sk.reqEle) continue;
+        if (sk.reqEleAny && !ally.elfEle) continue;
         let cat = null;
         if (sid === 'sk_antidote' || sid === 'sk_holy_light' || sid === 'sk_cancel') cat = '淨化';
         else if (sk.type === 'heal' && sk.hot && sk.autoBuff) cat = '團隊回復';
@@ -1738,6 +1742,9 @@ function allyMaintainBuffs(ally) {
             //    改為：只維持「來源角色有勾選自動施放」的 buff（沒有 config 或未勾＝不維持·與該角色親自遊玩時完全一致）。⚠️summon/HoT 走各自區塊·此閘只管 _isMercSelfBuff 自我增益。
             if (!_mercAutoOn(ally, sid)) continue;
             if (typeof TEAM_AURA_SKILLS !== 'undefined' && TEAM_AURA_SKILLS.includes(sid) && _teamAuraHas(sid, ally)) continue;   // 🌟 v3.0.99 團隊光環：隊上其他隊員已維持中→不重複施放（全隊只需一個來源·免白耗MP）
+            // 🌿 reqEle / reqEleAny：依「傭兵自身」屬性限制可施放的妖精技能（避免跨屬性維持大地祝福/水之元氣等）
+            if (sk.reqEle && ally.elfEle !== sk.reqEle) continue;
+            if (sk.reqEleAny && !ally.elfEle) continue;
             // 🆕 v2.6.50 用戶要求：傭兵輔助法術「以主要玩家為判斷依據」→ 主玩家身上已有此輔助狀態就不施放、沒有才施放。
             //    (player.buffs 與 ally.buffs 皆以技能 id 為鍵·同一輔助 buff 可直接比對；加速另有 buffs.haste 具名鍵·含藥水加速一併判定)
             if (typeof player !== 'undefined' && player && player.buffs) {
