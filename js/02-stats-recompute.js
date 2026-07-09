@@ -489,9 +489,9 @@ d.mr += (baseMr + bonusMr);
     if (p.buffs.sk_warrior_endurance > 0) p.mhp = Math.floor(p.mhp * (1 + (p.lv / 2) / 100));   // ⚔️ 體能強化：HP上限 +(等級/2)%
     if (_shN('狂怒') >= 3) p.mhp = Math.floor(p.mhp * 1.2);   // 😡 狂怒 3/5：最大HP +20%（於各 flat HP 加成後套用）
     if(p.mastery === 'i_mana') p.mmp = Math.floor(p.mmp * 2);   // 🔮 魔力精通：MP 上限加倍（耗魔亦加倍，見 getMpCost）
-    // 盟主的祝福（8 小時，存檔保留、死亡清空）：依到期時間判斷是否生效
+    // 盟主的祝福（24 小時，存檔保留、死亡清空）：依到期時間判斷是否生效（補跑以 wallClockNow 模擬離線時段）
     if(p.blessings) {
-        let _now = Date.now();
+        let _now = wallClockNow();
         if(p.blessings.precise > _now) d.extraHit += 3;                    // 精準目標
         if(p.blessings.blaze   > _now) { d.hpR += 15; d.mpR += 3; }        // 灼熱靈氣
         if(p.blessings.brave   > _now) { d.extraDmg += 3; d.extraMp += 6; }// 勇敢靈氣

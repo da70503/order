@@ -440,7 +440,7 @@
 // • player.buffs（增益）：以「秒」計，於 tick() 的每秒區塊（state.ticks % 10）「統一」遞減，勿在他處再扣
 // • player.cds.atkSk / healSk / purifySk：以 tick 計（施法節奏需受攻速細緻影響）
 // • player.cds.pot / reviveScrollCd / magicShieldCd：以秒計（tick() 的每秒區塊遞減）
-// • player.blessings / player.siege（盟主祝福、攻城勝利8折、宣戰冷卻）：牆鐘 Date.now()，刻意設計為關閉遊戲仍流逝
+// • player.blessings / player.siege（盟主祝福、攻城勝利8折、宣戰冷卻）：牆鐘計時；補跑期間以 wallClockNow() 模擬離線時段
 // • 召喚物 / 迷魅 endTick：絕對 tick，已隨存檔保存（saveGame 的 ticks 欄位），重載後仍有效
 const BUFF_NAMES = {   // buff 鍵 → 顯示名稱（DB.skills 查不到時使用）
     haste: "加速", brave: "勇敢藥水", blue: "藍色藥水", cautious: "慎重藥水",
@@ -880,6 +880,10 @@ let _royalFreeCast = false;   // 👑 魔法精通：一般攻擊命中 10% 免M
 let state = { running: false, ticks: 0, pDmgTick: 0, ff: false, inTick: false };
 // 主迴圈計時（依真實經過時間補跑 tick）
 const TICK_MS = 100;                 // 一個邏輯 tick 代表的真實時間
+let _catchUpWallMs = null;           // 補跑模擬牆鐘（ms）；null＝使用真實 Date.now()
+let _offlineCatchUpStartTs = 0;      // 離線補跑錨點（關閉時刻·供模擬牆鐘起算）
+let _catchUpNeedStatsPrime = false;  // 補跑首 tick 前須以模擬牆鐘重算屬性（盟主祝福等）
+function wallClockNow() { return _catchUpWallMs != null ? _catchUpWallMs : Date.now(); }
 const JUNK_AUTOSELL_TICKS = 100;    // 🗑️ 廢品自動賣出間隔：10 秒（100 tick × 100ms·2026-07-01 由 1800/3分鐘改快）；玩家手動標示廢品會把倒數重置為此值（標完 10 秒無新動作才賣）。⚠️自動賣出這條路徑不 saveGame(見 autoSellJunk)，靠其他既有存檔點落地
 const MERC_EXP_SHARE = 0.5;          // 🤝 一般模式：每名非倒地傭兵各得此比例（不減隊長）；經典模式改均分制（見 js/05）
 // 🤝 Phase4：設為「全體」的怪物攻擊技能名（依 mag.skn 比對·同名全部生效）→ 同時打玩家＋全部非倒地傭兵。其餘怪物傷害/狀態魔法仍可依仇恨權重隨機打單一目標(玩家或某傭兵)。

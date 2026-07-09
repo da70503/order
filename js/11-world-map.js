@@ -684,7 +684,7 @@ function siegeTick() {
         timer.textContent = `⚔ 攻城剩餘 ${mm}:${String(ss).padStart(2, '0')}`;
         timer.classList.remove('hidden');
     }
-    if (!s.towerKilled && Date.now() >= (s.endTime || 0)) endSiege('lose');
+    if (!s.towerKilled && wallClockNow() >= (s.endTime || 0)) endSiege('lose');
 }
 function saveSiegeBossHp() {
     if (!player.siege) return;
@@ -710,7 +710,7 @@ function handleSiegeKill(mob) {
         endSiege('win');
     }
 }
-function siegeVictoryActive() { return !!(player.siege && Date.now() < (player.siege.victoryUntil || 0)); }
+function siegeVictoryActive() { return !!(player.siege && wallClockNow() < (player.siege.victoryUntil || 0)); }
 function shopPrice(base) { return siegeVictoryActive() ? Math.floor((base || 0) * 0.8) : (base || 0); }   // 攻城獲勝 24h：商店 8 折
 // 🔧 對飾品施法的卷軸改為「次數制」：每次攻城獲勝重置 1 張購買額度
 //（原 24 小時計時存於 player.siege.accCdUntil，會被 startSiege 整包重建而歸零，可用搜索狀重置冷卻刷買）

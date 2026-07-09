@@ -213,9 +213,12 @@ function offlineRemoveOverlay() {
     _offlineOverlay = _offlineOverlayBar = _offlineOverlayTxt = null;
 }
 
-async function offlineRunCatchUp(totalTicks, huntMap, withOverlay) {
+async function offlineRunCatchUp(totalTicks, huntMap, withOverlay, offlineStartTs) {
     if (_offlineCatching || !(totalTicks > 0) || typeof runCatchUpTicks !== 'function') return { ran: 0, died: false };
     _offlineCatching = true;
+    _offlineCatchUpStartTs = offlineStartTs || 0;
+    _catchUpWallMs = null;
+    _catchUpNeedStatsPrime = false;
     let sliceMs = offlineSliceFor(totalTicks);
     let isKing = (typeof KING_ROOMS !== 'undefined') && !!KING_ROOMS[huntMap];
     let kingLeftRoom = false;
@@ -268,6 +271,9 @@ async function offlineRunCatchUp(totalTicks, huntMap, withOverlay) {
     try { updateUI(); renderMobs(); renderTabs(); } catch (e) {}
     offlineRemoveOverlay();
     offlineStamp();
+    _offlineCatchUpStartTs = 0;
+    _catchUpWallMs = null;
+    _catchUpNeedStatsPrime = false;
     _offlineCatching = false;
     return { ran: done, died: died };
 }
@@ -293,7 +299,7 @@ function offlineMaybeCatchup(slot, preTs, preMap) {
     let ms = Math.min(gap, offlineCapMs());
     let ticks = Math.floor(ms / TICK_MS);
     if (ticks <= 0) return;
-    offlineRunCatchUp(ticks, savedMap, ticks > OFFLINE_CFG.overlayMinTicks).catch(e => console.warn('[離線] catchup:', e));
+    offlineRunCatchUp(ticks, savedMap, ticks > OFFLINE_CFG.overlayMinTicks, preTs).catch(e => console.warn('[離線] catchup:', e));
 }
 
 // ----- 選角掛機資訊 UI -----

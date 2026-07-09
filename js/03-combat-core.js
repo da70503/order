@@ -80,8 +80,20 @@ function runCatchUpTicks(n, opts) {
     state.inTick = true;
     let ran = 0;
     try {
+        if (_catchUpWallMs == null) {
+            if (typeof _offlineCatching !== 'undefined' && _offlineCatching && _offlineCatchUpStartTs > 0)
+                _catchUpWallMs = _offlineCatchUpStartTs;
+            else
+                _catchUpWallMs = Date.now() - n * TICK_MS;
+            _catchUpNeedStatsPrime = true;
+        }
         for (let k = 0; k < n; k++) {
             if (!state.running || player.dead) break;
+            _catchUpWallMs += TICK_MS;
+            if (_catchUpNeedStatsPrime) {
+                _catchUpNeedStatsPrime = false;
+                if (typeof calcStats === 'function') calcStats();
+            }
             tick();
             settleDeadMobs();
             ran++;
@@ -90,6 +102,10 @@ function runCatchUpTicks(n, opts) {
         state.ff = false;
         _ffBulkLootVfx = false;
         state.inTick = false;
+        if (!(typeof _offlineCatching !== 'undefined' && _offlineCatching)) {
+            _catchUpWallMs = null;
+            _catchUpNeedStatsPrime = false;
+        }
         settleDeadMobs();
     }
 
@@ -412,10 +428,10 @@ function tick() {
     if(!player.dead && player.blessings && state.ticks % 10 === 0) {
         let _changed = false;
         for(let k in player.blessings) {
-            if(player.blessings[k] > 0 && player.blessings[k] <= Date.now()) {
+            if(player.blessings[k] > 0 && player.blessings[k] <= wallClockNow()) {
                 // 🩸 v2.6.24 血盟祝福「切換式」：到期時若「自動續期」開啟且身上有王族搜索狀 → 扣 1 張續 24 小時；沒得扣 → 自動關閉續期並移除
                 if(player.blessingAuto && player.blessingAuto[k] && typeof _blessingConsumeWarrant === 'function' && _blessingConsumeWarrant()) {
-                    player.blessings[k] = Date.now() + 24 * 3600 * 1000;
+                    player.blessings[k] = wallClockNow() + 24 * 3600 * 1000;
                     let _bn = (typeof BLESSING_DEFS !== 'undefined' && BLESSING_DEFS[k]) ? BLESSING_DEFS[k].n : k;
                     logSys(`血盟祝福「<span class="text-amber-300 font-bold">${_bn}</span>」到期，自動消耗 1 張 王族搜索狀 續期 24 小時。`);
                 } else {
@@ -675,7 +691,7 @@ function spawnMob(idx) {
     if (_elderRoom) {
         let _ab = mapState.mobs.filter(m => m && m.boss && m.curHp > 0 && !m._dead);
         if (_ab.length >= 2) _elderBossOk = false;
-        else if (_ab.length === 1) _elderBossOk = (Date.now() - (_ab[0]._bornMs || Date.now())) >= 180000;
+        else if (_ab.length === 1) _elderBossOk = (wallClockNow() - (_ab[0]._bornMs || wallClockNow())) >= 180000;
     }
     let wantBoss = (allowMultiBoss || !bossInBattle) && bossPool.length > 0 && (!_elderRoom || _elderBossOk) && (mapState.forceBoss || (siegeArea ? (!mapState.suppressSiegeBoss && Math.random() < 0.10) : (_elderRoom ? Math.random() < 0.05 : Math.random() < 0.01)));
     if(mapState.forceBoss) mapState.forceBoss = false;   // 強制旗標只作用於下一次生怪
@@ -711,7 +727,7 @@ function spawnMob(idx) {
     }
     
     // 魔物追蹤：在追蹤地圖且追蹤有效期間，每次出怪 50% 固定機率改為被追蹤的怪物
-    if(player.tracking && player.tracking.until > Date.now() && player.tracking.map === mapState.current
+    if(player.tracking && player.tracking.until > wallClockNow() && player.tracking.map === mapState.current
        && DB.maps[mapState.current] && DB.maps[mapState.current].includes(player.tracking.mob)
        && DB.mobs[player.tracking.mob] && !DB.mobs[player.tracking.mob].boss && Math.random() < 0.5) {
         mobId = player.tracking.mob;
@@ -743,7 +759,7 @@ function spawnMob(idx) {
     }
     let base = DB.mobs[mobId];
     if(!base) return;
-    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: Date.now() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用）；_born：出生序（鎖定最早出生用）
+    mapState.mobs[idx] = { ...base, curHp: base.hp, uid: uid(), _born: ++_mobBornSeq, _magCd: {}, justHit: false, st: newMobStatus(), _bornMs: wallClockNow() };   // 🏛️ _bornMs：生成時間（長老之室 BOSS 3 分鐘節流用·補跑以 wallClockNow）；_born：出生序（鎖定最早出生用）
     // 弓：場上原本沒有任何敵人時，第一個出現的敵人不論主動/被動，都強制視為被動（搭配弓攻擊3秒延遲，可先手放風箏）
     if(!base.boss && player.eq.wpn && DB.items[player.eq.wpn.id] && DB.items[player.eq.wpn.id].isBow && !mapState.mobs.some((m, j) => m && j !== idx)) {
         mapState.mobs[idx].beh = '被動';   // 頭目除外，維持主動
