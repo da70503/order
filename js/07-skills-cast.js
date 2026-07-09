@@ -742,6 +742,23 @@ function applyTeamHot(skId, sk, dStats) {
     let mDmg = (dStats && dStats.magicDmg) || 0;
     player.hots[skId] = { skId: skId, healDice: sk.healDice, healBase: sk.healBase, valDice: sk.valDice, magicDmg: mDmg, spCoef: 1 + (3 * mDmg / 16), interval: sk.hot.interval, ticksLeft: sk.hot.ticks, cd: sk.hot.interval, skName: sk.n, msg: sk.msg };
 }
+function _autoBuyToTarget(itemId, target, chkId, qtyUnit) {   // 🍶 治療藥水同款：不足時一次補到目標數量（虛擬扣金幣·不開商店）
+    try {
+        let chk = document.getElementById(chkId);
+        if (!chk || !chk.checked) return false;
+        let d = DB.items[itemId]; if (!d) return false;
+        let current = player.inv.find(i => i.id === itemId);
+        let count = current ? current.cnt : 0;
+        if (count >= target) return false;
+        let needed = target - count;
+        let unitPrice = shopPrice(d.p);
+        if (needed <= 0 || player.gold < needed * unitPrice) return false;
+        player.gold -= needed * unitPrice;
+        gainItem(itemId, needed, true, true);
+        logSys(`自動消耗 ${needed * unitPrice} 金幣購買了 ${needed} ${qtyUnit || ''}${d.n}。`);
+        return true;
+    } catch (e) { return false; }
+}
 function autoActions() {
     let hpPct = (player.hp / player.mhp) * 100;
     let mpPct = (player.mp / player.mmp) * 100;

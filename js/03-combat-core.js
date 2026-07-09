@@ -485,6 +485,10 @@ function tick() {
                 for (let i = 0; i < hits; i++) {
                     if (target.curHp <= 0) break;
                     let meat = player.inv.find(it => it.id === 'new_item_143');
+                    if (!meat || meat.cnt <= 0) {
+                        if (typeof _autoBuyToTarget === 'function') _autoBuyToTarget('new_item_143', 3000, 'set-auto-buy-meat', '個');
+                        meat = player.inv.find(it => it.id === 'new_item_143');
+                    }
                     if (!meat || meat.cnt <= 0) break;   // 沒有肉就停止
                     meat.cnt--;
                     if (meat.cnt <= 0) player.inv = player.inv.filter(it => it.id !== 'new_item_143');

@@ -1995,17 +1995,25 @@ function reviveMercenary(slotN, method) {
     // 🎫 復活卷軸：須死亡 15 秒後（_reviveCd 歸零）
     if ((ally._reviveCd || 0) > 0) { logSys(`<span class="text-slate-400">復活卷軸須死亡 15 秒後才能使用，${ally._allyName} 還需 ${Math.ceil(ally._reviveCd / 10)} 秒（或用返生術立即復活）。</span>`); return; }
     let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive');
+    if (!sc || (sc.cnt || 0) <= 0) {
+        if (typeof _autoBuyToTarget === 'function') _autoBuyToTarget('scroll_revive', 5, 'set-auto-buy-revive', '張');
+        sc = player.inv && player.inv.find(i => i.id === 'scroll_revive');
+    }
     if (!sc || (sc.cnt || 0) <= 0) { logSys(`<span class="text-red-400">需要「復活卷軸」才能於原地復活 ${ally._allyName}（或用返生術、或回村免費復活全體倒地傭兵）。</span>`); return; }
     sc.cnt--; player.inv = player.inv.filter(i => i.cnt > 0);   // 消耗 1 張復活卷軸
     _reviveAllyDone(ally, '復活卷軸');
 }
 // 🎫 v2.6.6：倒地傭兵 15 秒冷卻結束後，若「玩家(隊長)身上有復活卷軸」→ 自動消耗 1 張原地復活（返生術仍須手動）。
-//   ・冷卻未結束：不動作（等冷卻）。玩家無卷軸：不動作（不自動購買；之後補到卷軸會於下一 tick 自動復活）。
+//   ・冷卻未結束：不動作（等冷卻）。玩家無卷軸：若勾「自動購買復活卷軸」→ 補到 5 張後自動使用（v3.1.1·比照治療藥水補貨）。
 //   ・在 alliesTick 每 tick 對倒地傭兵呼叫；含背景補跑。玩家死亡仍可觸發（卷軸不需玩家存活，與 reviveMercenary 'scroll' 路徑一致）。
 function tryAutoReviveMercScroll(ally) {
     if (!ally || !ally._downed) return false;
     if ((ally._reviveCd || 0) > 0) return false;                                            // 15 秒冷卻未結束
     let sc = player.inv && player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
+    if (!sc) {
+        if (typeof _autoBuyToTarget === 'function') _autoBuyToTarget('scroll_revive', 5, 'set-auto-buy-revive', '張');
+        sc = player.inv && player.inv.find(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
+    }
     if (!sc) return false;                                                                    // 身上沒有復活卷軸→等待
     sc.cnt--; player.inv = player.inv.filter(i => (i.cnt || 0) > 0);                          // 消耗 1 張復活卷軸
     _reviveAllyDone(ally, '復活卷軸（自動）');
