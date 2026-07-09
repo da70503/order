@@ -323,10 +323,10 @@ function allyQiguAttack(ally, t, wpn) {
     if (t.curHp <= 0) { if (ri !== -1) killMob(ri); } else renderMobs();
     allyWeaponProcs(ally, t, { hit: true, dmg: dmg });   // 🔮 共鳴等（幻術士魔杖；非共鳴武器內部 no-op，主目標已死自動轉移）
 }
-function allyAttackOnce(ally) {
+function allyAttackOnce(ally, noSprite) {
     if (!ally || !ally.d) return;
     let t = getTarget(); if (!t || t.curHp <= 0) return;
-    if (typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'attack');   // 🤝 v3.0.70 隊員戰場 sprite：攻擊動作
+    if (!noSprite && typeof _allySpriteTrigger === 'function') _allySpriteTrigger(ally, 'attack');   // 🤝 v3.0.70 隊員戰場 sprite：攻擊動作
     let d = ally.d;
     // 🔮 幻術士傭兵 奇古獸攻擊（公式同玩家，用傭兵自身衍生值；裝奇古獸或魔劍精通）
     if (ally.cls === 'illusion') {
@@ -1205,9 +1205,10 @@ function allyReactIai(mob) {
 // 妖精協力：三重矢（3 次物理攻擊）後整體判定一次連射
 function allyTripleShot(ally) {
     logCombat(`<span class="text-sky-300 font-bold">【協力·${ally._allyName}】</span>施放 三重矢！`, 'player');
+    if (typeof _allySpriteTriggerChainAttack === 'function') _allySpriteTriggerChainAttack(ally, 3);
     for (let h = 0; h < 3; h++) {
         let t = getTarget(); if (!t || t.curHp <= 0) break;
-        allyAttackOnce(ally);
+        allyAttackOnce(ally, true);
     }
     allyRapidfire(ally);
 }
@@ -1546,7 +1547,9 @@ function allyCastSlaughter(ally, sk) {
     let layers = t.weakExpose || 0, bonus = layers > 0 ? 10 * layers : 0;
     let consume = layers > 0 && !allyHasMastery(ally, 'k_weakness');   // 🏅 弱點精通（傭兵）：屠宰者不消耗弱點曝光
     let _chain = allyHasMastery(ally, 'k_chainblade');
-    let times = sk.hits || 3, total = 0, log = [], applied = false;
+    let times = sk.hits || 3;
+    if (typeof _allySpriteTriggerChainAttack === 'function') _allySpriteTriggerChainAttack(ally, times);
+    let total = 0, log = [], applied = false;
     for (let h = 0; h < times; h++) {
         if (t.curHp <= 0) break;
         let res = allyStrikeRoll(ally, t, {});

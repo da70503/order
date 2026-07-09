@@ -221,7 +221,9 @@ async function offlineRunCatchUp(totalTicks, huntMap, withOverlay, offlineStartT
     _catchUpNeedStatsPrime = false;
     let sliceMs = offlineSliceFor(totalTicks);
     let isKing = (typeof KING_ROOMS !== 'undefined') && !!KING_ROOMS[huntMap];
+    let isCastleHunt = (typeof CASTLE_EXTRA !== 'undefined') && CASTLE_EXTRA.includes(huntMap);
     let kingLeftRoom = false;
+    let castleLeftRoom = false;
 
     try { if (typeof _gameLoopId !== 'undefined' && _gameLoopId !== null) { clearInterval(_gameLoopId); _gameLoopId = null; } } catch (e) {}
 
@@ -239,6 +241,7 @@ async function offlineRunCatchUp(totalTicks, huntMap, withOverlay, offlineStartT
             died = r.died;
             if (r.ran <= 0) break;
             if (isKing && mapState && mapState.current !== huntMap) kingLeftRoom = true;
+            if (isCastleHunt && mapState && mapState.current !== huntMap) castleLeftRoom = true;
             if (withOverlay) offlineUpdateOverlay(done / totalTicks, done, totalTicks);
             await offlineRaf();
         }
@@ -252,7 +255,8 @@ async function offlineRunCatchUp(totalTicks, huntMap, withOverlay, offlineStartT
 
     player.dead = false;
     if (!died && huntMap) {
-        if (isKing && kingLeftRoom) offlineGotoMap(offlineHomeTown());
+        let _castleExpired = isCastleHunt && typeof siegeVictoryActive === 'function' && !siegeVictoryActive();
+        if ((isKing && kingLeftRoom) || (isCastleHunt && (castleLeftRoom || _castleExpired))) offlineGotoMap(offlineHomeTown());
         else {
             if (player.mhp) player.hp = player.mhp;
             if (player.mmp) player.mp = player.mmp;

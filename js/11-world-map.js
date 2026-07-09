@@ -652,11 +652,12 @@ function startSiege(faction, city) {
 }
 function endSiege(result) {
     let s = player.siege; if (!s || !s.active) return;
+    let _now = wallClockNow();
     s.active = false; s.result = result; s.rewardPending = true;
-    s.endTime = Date.now();   // 擊敗守護塔（獲勝）或時間到：攻城時間立即結束
-    s.cooldownUntil = Date.now() + 24*3600*1000;   // 不論勝負，24 小時後才能再次宣布
+    s.endTime = _now;   // 擊敗守護塔（獲勝）或時間到：攻城時間立即結束
+    s.cooldownUntil = _now + 24*3600*1000;   // 不論勝負，24 小時後才能再次宣布
     let _cfg = siegeCityCfg();
-    if (result === 'win') { s.victoryUntil = Date.now() + 24*3600*1000; s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！24 小時內全商店 8 折、開放「城堡」前往${_cfg.castleName}，回村按鈕變為回城。前往盟主處點「領賞」領取金幣獎勵。`); }
+    if (result === 'win') { s.victoryUntil = _now + 24*3600*1000; s.victoryCity = _cfg.key; player.ismaelAccUsed = false; logSys(`🏆🏰 <span class="text-yellow-300 font-bold">攻城獲勝！</span>擊破了${_cfg.tower}！24 小時內全商店 8 折、開放「城堡」前往${_cfg.castleName}，回村按鈕變為回城。前往盟主處點「領賞」領取金幣獎勵。`); }
     else logSys(`🏰 <span class="text-slate-300 font-bold">攻城失敗…</span>時間到，未能攻下${_cfg.tower}。仍可前往盟主處點「領賞」領取獎勵。`);
     { let timer = document.getElementById('siege-timer'); if (timer) timer.classList.add('hidden'); }   // 結束隱藏倒數
     setMapSelectors(getHomeTown());
