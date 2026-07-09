@@ -79,7 +79,7 @@ function gainItem(id, cnt=1, silent=false, forceNormal=false, affixOld=false) {
     if(DB.items[id] && DB.items[id].grantSkills) { calcStats(); renderSkillSelects(); }   // 取得授予技能的頭盔：立即生效
     
     if(typeof auditTrackGain === 'function') auditTrackGain(itemInfo);   // 統計：掉落計數
-    try { if (_vfxLootCtx && d && d.gachaWeight === 1 && typeof vfxRareDrop === 'function') vfxRareDrop(d.n); } catch(e){}   // ✨ VFX：潘朵拉權重=1 的稀有掉落金色閃光
+    try { if (!ffSuppressRareLootVfx() && _vfxLootCtx && d && d.gachaWeight === 1 && typeof vfxRareDrop === 'function') vfxRareDrop(d.n); } catch(e){}   // ✨ VFX：潘朵拉權重=1 稀有閃光（長時間補跑/離線結算略過·與「掛機期間獲得」門檻一致；短補跑<3秒仍播）
     try { if (typeof autoSortInventory === 'function') autoSortInventory(); } catch (e) {}   // 🔧 v2.6.73 獲得物品時自動排列背包（每 10 秒最多 1 次·節流在函式內）
     return itemInfo; // 👈 讓拉霸機可以讀取最終產生的物品
 }

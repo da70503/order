@@ -73,6 +73,9 @@ function runCatchUpTicks(n, opts) {
     player.inv.forEach(i => { _invBefore[i.id] = (_invBefore[i.id] || 0) + i.cnt; });
     const _goldBefore = player.gold;
 
+    // 稀有掉落閃字：僅在「會出掛機期間獲得」等級的補跑時略過（≥3 秒累積或離線結算）；短補跑（<3 秒）仍播
+    _ffBulkLootVfx = (typeof _offlineCatching !== 'undefined' && _offlineCatching)
+        || ((_awayAcc.ticks + n) * TICK_MS >= AWAY_SUMMARY_MIN_MS);
     state.ff = true;
     state.inTick = true;
     let ran = 0;
@@ -85,6 +88,7 @@ function runCatchUpTicks(n, opts) {
         }
     } finally {
         state.ff = false;
+        _ffBulkLootVfx = false;
         state.inTick = false;
         settleDeadMobs();
     }

@@ -878,6 +878,8 @@ function startGameTimers() {
 // 回到即時（n===1）時 flushAwaySummary 統一補述：≥3 秒→「掛機期間獲得」；<3 秒→緊湊「獲得物品：[a、b、c]」（避免短補跑漏訊息）。
 const AWAY_SUMMARY_MIN_MS = 3000;    // 累積補跑時間達 3 秒→掛機期間獲得；未達則緊湊一行補述
 let _awayAcc = { ticks: 0, gold: 0, items: {} };
+let _ffBulkLootVfx = false;   // 長時間補跑（達掛機期間獲得門檻）或離線結算期間為 true→gainItem 略過稀有掉落閃字
+function ffSuppressRareLootVfx() { return !!_ffBulkLootVfx; }
 function flushAwaySummary() {
     if (_awayAcc.ticks <= 0) return;
     let gains = [];
