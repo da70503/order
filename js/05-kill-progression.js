@@ -949,10 +949,14 @@ function reviveInPlace() {
     let cost = rk ? player.d.getMpCost(rk.mp, rk.tier) : Infinity;
     let hasRez = player.skills.includes('sk_resurrection') && player.mp >= cost;
     let scroll = player.inv.find(i => i.id === 'scroll_revive');
+    if (!hasRez && (!scroll || (scroll.cnt || 0) <= 0)) {
+        if (typeof _autoBuyToTarget === 'function') _autoBuyToTarget('scroll_revive', 5, 'set-auto-buy-revive', '張');
+        scroll = player.inv.find(i => i.id === 'scroll_revive');
+    }
     if(hasRez) {
         player.mp -= cost;   // 返生術：消耗MP，無冷卻
         logCombat('<span class="text-yellow-300 font-bold">返生術 發動！你從死亡邊緣原地復活了。</span>', 'heal');
-    } else if(scroll) {
+    } else if(scroll && (scroll.cnt || 0) > 0) {
         scroll.cnt--;
         player.inv = player.inv.filter(i => i.cnt > 0);
         player.reviveScrollCd = 15;   // 復活卷軸：15秒冷卻（僅存活時倒數）
@@ -981,7 +985,10 @@ function updateReviveInPlaceBtn() {
     let rk = DB.skills.sk_resurrection;
     let cost = rk ? player.d.getMpCost(rk.mp, rk.tier) : Infinity;
     let hasRez = player.skills.includes('sk_resurrection') && player.mp >= cost;
-    let hasScroll = player.inv.some(i => i.id === 'scroll_revive');
+    if (player.dead && !onCd && !hasRez) {
+        if (typeof _autoBuyToTarget === 'function') _autoBuyToTarget('scroll_revive', 5, 'set-auto-buy-revive', '張');
+    }
+    let hasScroll = player.inv.some(i => i.id === 'scroll_revive' && (i.cnt || 0) > 0);
     if(player.dead && !onCd && (hasRez || hasScroll)) btn.classList.remove('hidden');
     else btn.classList.add('hidden');
 }
