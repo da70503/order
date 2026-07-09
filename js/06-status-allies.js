@@ -1720,7 +1720,8 @@ function allyMaintainBuffs(ally) {
     if (!ally || ally._downed) return;
     if (state.ticks % 10 !== 0) return;                 // 每秒一次（比照玩家 buff 遞減節奏；限制重算頻率）
     if (!ally.buffs) ally.buffs = {};
-    let _avaBefore = (ally.buffs.sk_illu_avatar || 0) > 0;   // 🌟 v3.0.100 化身(全隊攻擊光環)前狀態：本傭兵取得/失去化身→末尾 calcStats 刷新玩家 d（玩家攻擊吃/退傭兵化身+10）
+    let _auraBefore = {};   // 🌟 v3.0.101 團隊光環前狀態：任一 TEAM_AURA 取得/失去→末尾刷新玩家 d 與狀態欄鏡像
+    if (typeof TEAM_AURA_SKILLS !== 'undefined') TEAM_AURA_SKILLS.forEach(sid => { _auraBefore[sid] = (ally.buffs[sid] || 0) > 0; });
     let changed = false;
     for (let k in ally.buffs) { if (ally.buffs[k] > 0) { ally.buffs[k]--; if (ally.buffs[k] <= 0) { ally.buffs[k] = 0; changed = true; } } }   // 遞減；到期→需重算移除衍生值
     let _ast = ally.statuses || {};
@@ -1774,7 +1775,9 @@ function allyMaintainBuffs(ally) {
         }
     }
     if (changed) { try { _allyLevelRecompute(ally); } catch (e) {} }   // 重算 ally.d 反映 buff 衍生值（含 ally._recompN++·供幻覺 nonce 守衛）
-    if (((ally.buffs.sk_illu_avatar || 0) > 0) !== _avaBefore) { try { if (typeof calcStats === 'function') calcStats(); } catch (e) {} }   // 🌟 v3.0.100 本傭兵化身狀態變動→刷新玩家 d（recompute 末段重注入 teamIlluAura(player)·玩家攻擊即時吃/退傭兵化身+10）
+    if (typeof TEAM_AURA_SKILLS !== 'undefined' && TEAM_AURA_SKILLS.some(sid => ((ally.buffs[sid] || 0) > 0) !== _auraBefore[sid])) {
+        try { if (typeof calcStats === 'function') calcStats(); if (typeof renderStatusEffects === 'function') renderStatusEffects(); } catch (e) {}   // 🌟 v3.0.101 團隊光環變動→刷新玩家 d(AC/攻擊)與狀態欄鏡像
+    }
 }
 // 🆕 v2.6.28 淨化共用（魔法相消術/聖潔之光/解毒術·玩家與傭兵共用）：施法者(自己)受硬控(石化/冰凍/暈眩/麻痺/沉睡)或沉默/魔封→無法施放；否則幫隊員解可解狀態。
 //    v2.6.29 改「一次只解一人·優先主要玩家」：teamCleanseOne 依 _dispelTeamMembers 順序(玩家排首→傭兵)找第一個有可解狀態者，只清除該一人的該類狀態並回傳被解者。

@@ -818,6 +818,36 @@ function _teamAuraHas(sid, exclude) {
     for (let i = 0; i < al.length; i++) { let a = al[i]; if (a && a !== exclude && !a._downed && a.buffs && (a.buffs[sid] || 0) > 0) return true; }
     return false;
 }
+// 🌟 v3.0.101 受益者自身已帶該光環 buff → 不再從其他隊員重複計入（全隊同技能只生效一次·避免玩家自施放+傭兵維持短暫重疊雙算）。
+function _teamAuraActiveForBeneficiary(sid, forWho) {
+    if (forWho && forWho.buffs && (forWho.buffs[sid] || 0) > 0) return false;
+    return _teamAuraHas(sid, forWho);
+}
+// 🌟 v3.0.101 團隊光環剩餘秒數（玩家+未倒地傭兵取最長·供狀態欄唯讀鏡像·不寫入 player.buffs）。
+function teamAuraTicks(sid) {
+    let max = 0;
+    if (typeof player !== 'undefined' && player && player.buffs && (player.buffs[sid] || 0) > 0) max = Math.max(max, player.buffs[sid]);
+    let al = (typeof player !== 'undefined' && player && player.allies) || [];
+    for (let i = 0; i < al.length; i++) {
+        let a = al[i];
+        if (a && !a._downed && a.buffs && (a.buffs[sid] || 0) > 0) max = Math.max(max, a.buffs[sid]);
+    }
+    return max;
+}
+// 🌟 v3.0.101 團隊光環維持者（剩餘最長者；玩家自維持回傳「自己」·傭兵回傳「協力·名稱」·無則 null）。
+function teamAuraMaintainer(sid) {
+    let best = 0, who = null;
+    if (typeof player !== 'undefined' && player && player.buffs && (player.buffs[sid] || 0) > 0) {
+        best = player.buffs[sid]; who = '自己';
+    }
+    let al = (typeof player !== 'undefined' && player && player.allies) || [];
+    for (let i = 0; i < al.length; i++) {
+        let a = al[i];
+        if (!a || a._downed || !a.buffs || (a.buffs[sid] || 0) <= 0) continue;
+        if (a.buffs[sid] > best) { best = a.buffs[sid]; who = '協力·' + (a._allyName || '傭兵'); }
+    }
+    return best > 0 ? who : null;
+}
 function masteryChangeCost() { return { gold: 3000000, warrants: 10 }; }   // 🔧 固定費用：每次更換都維持 300 萬金幣＋10 張王族搜索狀，不再隨次數遞增
 // 技能職業需求等級（單一事實來源）：🏅 魔導精通的妖精可學四項法師法術（需求等級沿用法師）
 function skillReqLv(sk, skId) {

@@ -663,7 +663,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
     let st = mob.st || newMobStatus();
     if (st.terror > 0 && !_asleep && Math.random() < 0.90) { logCombat(`<span class="${getMobColor(mob.lv)}">${mob.n}</span> 陷入恐懼，攻擊落空。`, 'miss'); return; }   // 🐉 恐懼無助：90% 攻擊落空
     let mobHitBonus = (mob.hit || 0) - (st.blindVal || 0) - (st.weaken > 0 ? 2 : 0) - (st.disease > 0 ? 4 : 0) + ((mob._siegeHitEnd > state.ticks) ? 2 : 0) + tamerAuraHit(mob);   // 暴風神射：額外命中+2；🔧 馴獸光環
-    let rawHitValue = mob.lv + mobHitBonus - player.lv + (player.d.ac - teamAcBonus(player));   // 🌟 v3.0.99 傭兵提供的大地祝福/高崙 全隊AC-（排除玩家自身·其自身已計入 player.d.ac）
+    let rawHitValue = mob.lv + mobHitBonus - player.lv + player.d.ac;   // 🌟 v3.0.99 傭兵提供的大地祝福/高崙 全隊AC-（排除玩家自身·其自身已計入 player.d.ac）
     let hitValue = stretchHitValue(rawHitValue);
     
     let rollHit = roll(1, 20);
@@ -699,7 +699,7 @@ function enemyPhysicalAttack(mob, idx, stunChance = 0, atkDmg = null, atkDb = nu
         // 隨機減免：騎士 (10-AC)/2；妖精/黑暗妖精/龍騎士/戰士 (10-AC)/3；幻術士 (10-AC)/4；王族/法師等 (10-AC)/5
         // 🔧 v2.6.64：取值範圍由「0 ~ (10-AC)/Y」改為「(10-AC)/3Y ~ (10-AC)/Y」（下限=上限的1/3）
         let rndDrMax = 0;
-        let acGap = Math.max(0, 10 - (player.d.ac - teamAcBonus(player)));   // 🌟 v3.0.99 傭兵團隊AC光環（隨機減傷上限亦提高）
+        let acGap = Math.max(0, 10 - player.d.ac);   // 🌟 v3.0.101 含 recomputeStats 注入的團隊 AC 光環
         if (player.cls === 'knight')         rndDrMax = Math.floor(acGap / 2);
         else if (player.cls === 'elf')       rndDrMax = Math.floor(acGap / 3);
         else if (player.cls === 'dark')      rndDrMax = Math.floor(acGap / 3);   // 🔧 黑暗妖精：(10-AC)/3（同妖精）
@@ -847,15 +847,15 @@ function enemyAttackChooseVictim(mob, idx) {
 // 🌿🛡️ 全隊防禦增益（由玩家施放·全隊生效·讀真實玩家 player.buffs·非換身）：
 //   v2.6.5 大地的祝福→全隊 AC-7；鋼鐵防護→全隊受傷-5%。🔮 v2.6.7 幻覺：鑽石高崙→全隊 AC-10；幻覺：化身→全隊受傷-3%。
 //   🌟 v3.0.99 改「任一隊員(玩家/傭兵)維持即全隊生效」：teamAcBonus/teamIlluAura 傳「受益者 forWho」排除自身（其自身光環已由 recomputeStats buff 迴圈套進自身 d·避免雙算）；teamDmgReduceMult 不排除(其效果非 recompute 套用·無雙算)。
-//   玩家自身：AC 由 recomputeStats(buff d:{ac})＋teamAcBonus(player)(只補傭兵來源)；受傷減免由 _drMult 段 teamDmgReduceMult()；傭兵：AC 走 teamAcBonus(ally)、受傷走 teamDmgReduceMult()、幻覺攻擊光環走 teamIlluAura(ally) 注入。⚠️玩家吃「傭兵提供的幻覺攻擊光環(化身+10攻擊)」暫未實裝(玩家仍只吃自身幻覺攻擊)·防禦/水之元氣則全來源皆吃。
-function teamAcBonus(forWho) { let v = 0; if (_teamAuraHas('sk_elf_earthbless', forWho)) v += ((DB.skills.sk_elf_earthbless && DB.skills.sk_elf_earthbless.d && DB.skills.sk_elf_earthbless.d.ac) || 0); if (_teamAuraHas('sk_illu_golem', forWho)) v += ((DB.skills.sk_illu_golem && DB.skills.sk_illu_golem.d && DB.skills.sk_illu_golem.d.ac) || 0); return v; }
+//   🌟 v3.0.101 玩家 AC：recomputeStats(buff d:{ac})＋teamAcBonus(player)(只補傭兵來源·戰鬥直接讀 player.d.ac)；狀態欄 teamAuraTicks 唯讀鏡像不寫 player.buffs。傭兵 AC 仍走 teamAcBonus(ally)。
+function teamAcBonus(forWho) { let v = 0; if (_teamAuraActiveForBeneficiary('sk_elf_earthbless', forWho)) v += ((DB.skills.sk_elf_earthbless && DB.skills.sk_elf_earthbless.d && DB.skills.sk_elf_earthbless.d.ac) || 0); if (_teamAuraActiveForBeneficiary('sk_illu_golem', forWho)) v += ((DB.skills.sk_illu_golem && DB.skills.sk_illu_golem.d && DB.skills.sk_illu_golem.d.ac) || 0); return v; }
 function teamDmgReduceMult() { let m = 1; if (_teamAuraHas('sk_elf_steelguard')) m *= (1 - (((DB.skills.sk_elf_steelguard && DB.skills.sk_elf_steelguard.teamDmgReducePct) || 0) / 100)); if (_teamAuraHas('sk_illu_avatar')) m *= (1 - (((DB.skills.sk_illu_avatar && DB.skills.sk_illu_avatar.dmgTakenReduce) || 0) / 100)); return m; }
 // 🔮 v2.6.7 幻覺攻擊系全隊光環→v3.0.99 任一隊員維持即生效：回傳應加到「forWho 以外」隊員攻擊/魔法的加成 {ed,eh,md}；無則 null。傭兵側 alliesTick/反擊居合注入 ally.d(排除自身)。
 function teamIlluAura(forWho) {
     let ed = 0, eh = 0, md = 0;
-    if (_teamAuraHas('sk_illu_ogre', forWho))   { let o = (DB.skills.sk_illu_ogre   && DB.skills.sk_illu_ogre.d)   || {}; ed += o.extraDmg || 0; eh += o.extraHit || 0; }   // 歐吉：額外傷害+4·額外命中+4
-    if (_teamAuraHas('sk_illu_avatar', forWho)) { let a = (DB.skills.sk_illu_avatar && DB.skills.sk_illu_avatar.d) || {}; ed += a.extraDmg || 0; }                            // 化身：額外傷害+10
-    if (_teamAuraHas('sk_illu_lich', forWho))   { let l = (DB.skills.sk_illu_lich   && DB.skills.sk_illu_lich.d)   || {}; md += l.magicDmg || 0; }                            // 巫妖：魔法傷害+2
+    if (_teamAuraActiveForBeneficiary('sk_illu_ogre', forWho))   { let o = (DB.skills.sk_illu_ogre   && DB.skills.sk_illu_ogre.d)   || {}; ed += o.extraDmg || 0; eh += o.extraHit || 0; }   // 歐吉：額外傷害+4·額外命中+4
+    if (_teamAuraActiveForBeneficiary('sk_illu_avatar', forWho)) { let a = (DB.skills.sk_illu_avatar && DB.skills.sk_illu_avatar.d) || {}; ed += a.extraDmg || 0; }                            // 化身：額外傷害+10
+    if (_teamAuraActiveForBeneficiary('sk_illu_lich', forWho))   { let l = (DB.skills.sk_illu_lich   && DB.skills.sk_illu_lich.d)   || {}; md += l.magicDmg || 0; }                            // 巫妖：魔法傷害+2
     if (ed === 0 && eh === 0 && md === 0) return null;
     return { ed: ed, eh: eh, md: md };
 }

@@ -1045,6 +1045,19 @@ function renderStatusIconBar() {
     Object.keys(STATUS_ICON_SKILLS).forEach(id=>{if((player.buffs[id]||0)>0)add(STATUS_ICON_SKILLS[id],player.buffs[id],DB.skills[id]?DB.skills[id].n:STATUS_ICON_SKILLS[id]);});
     // 持續治療不存於 player.buffs，而是以 0.1 秒 tick 記在 player.hots；換算成真正剩餘秒數後顯示。
     [['sk_regen','體力回復術'],['sk_elf_lifebless','生命的祝福']].forEach(([id,name])=>{let h=player.hots&&player.hots[id];if(h&&h.ticksLeft>0){let remainTicks=Math.max(0,(h.ticksLeft-1)*(h.interval||0)+(h.cd||0));add(name,Math.ceil(remainTicks/10),DB.skills[id]?DB.skills[id].n:name);}});
+    // 🌟 v3.0.101 傭兵維持的團隊光環：唯讀鏡像到玩家狀態圖示（不寫 player.buffs）·玩家自身已有則上行 STATUS_ICON_SKILLS 已顯示。
+    if (typeof TEAM_AURA_SKILLS !== 'undefined' && typeof teamAuraTicks === 'function') {
+        TEAM_AURA_SKILLS.forEach(sid => {
+            if ((player.buffs[sid] || 0) > 0) return;
+            let ticks = teamAuraTicks(sid);
+            if (ticks <= 0 || !STATUS_ICON_SKILLS[sid]) return;
+            let sk = DB.skills[sid];
+            let label = sk ? sk.n : sid;
+            let maint = typeof teamAuraMaintainer === 'function' ? teamAuraMaintainer(sid) : null;
+            if (maint) label = label + '｜' + maint;
+            add(STATUS_ICON_SKILLS[sid], ticks, label);
+        });
+    }
     // 🔧 v2.7.5 合併 2683「狀態圖示狂閃修正」：renderStatusEffects 每 tick(0.1秒) 呼叫本函式；原本每次都重建整排 innerHTML→所有 <img> 反覆重新解碼/重繪而狂閃。
     //   改「簽章式重建」：sig 只含 狀態種類/順序，不含秒數→種類/順序不變時不重建 DOM，僅更新 title(圖片保持不動、不閃)。
     // 🔧 v2.7.9 用戶要求：移除圖示上的動態倒數文字(.status-icon-time 不再產生)——剩餘秒數只留 hover title 提示；sig 隨之不需 T/P 位。
@@ -1121,6 +1134,19 @@ function renderStatusEffects() {
             if(_skipIconized && STATUS_ICON_SKILLS[k]) continue;   // 🔧 v2.7.2 有圖示的技能增益→戰鬥中略過文字(改看右上狀態圖示)；無圖示技能/村莊仍顯示
             buffs.push(`<span class="${getBuffColor(k, DB.skills[k])} font-bold">${DB.skills[k].n}</span>`);
         }
+    }
+    // 🌟 v3.0.101 傭兵維持的團隊光環：唯讀鏡像到狀態文字欄（玩家自身已有則上行已顯示）。
+    if (typeof TEAM_AURA_SKILLS !== 'undefined' && typeof teamAuraTicks === 'function') {
+        TEAM_AURA_SKILLS.forEach(sid => {
+            if ((player.buffs[sid] || 0) > 0) return;
+            let ticks = teamAuraTicks(sid);
+            if (ticks <= 0 || !DB.skills[sid]) return;
+            if (_skipIconized && STATUS_ICON_SKILLS[sid]) return;
+            let label = DB.skills[sid].n;
+            let maint = typeof teamAuraMaintainer === 'function' ? teamAuraMaintainer(sid) : null;
+            if (maint) label += '（' + maint + '）';
+            buffs.push(`<span class="${getBuffColor(sid, DB.skills[sid])} font-bold">${label}</span>`);
+        });
     }
 
     // ===== 減益 DEBUFF（玩家受到的異常狀態）=====
